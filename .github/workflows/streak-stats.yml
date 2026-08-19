@@ -1,0 +1,91 @@
+name: Update contribution stats
+
+on:
+  schedule:
+    - cron: "15 * * * *"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    if: github.event_name != 'push' || github.event.head_commit.message != 'chore: refresh profile snapshot'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout profile repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate contribution stats
+        uses: DenverCoder1/github-readme-streak-stats@main
+        with:
+          options: >-
+            user=${{ github.repository_owner }}&background=0D1117&border=2A2A2A&stroke=2A2A2A&ring=F5F5F5&fire=A3A3A3&currStreakNum=F5F5F5&sideNums=F5F5F5&currStreakLabel=A3A3A3&sideLabels=A3A3A3&dates=737373&border_radius=8&locale=en&short_numbers=false&starting_year=2026&disable_animations=true&card_width=760&card_height=190
+          path: profile/streak.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Customize contribution card
+        env:
+          TOTAL_REPOSITORIES: "41"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          PROFILE_TIMEZONE: "America/Sao_Paulo"
+        run: python3 scripts/customize_streak_card.py
+
+      - name: Generate contribution heatmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: python3 scripts/generate_contribution_heatmap.py
+
+      - name: Refresh README image cache
+        run: |
+          if git diff --quiet -- profile/streak.svg profile/contributions.svg; then
+            exit 0
+          fi
+
+          python3 - <<'PY'
+          import datetime as dt
+          import re
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text(encoding="utf-8")
+          stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
+          text = re.sub(
+              r"(\./profile/streak\.svg)(?:\?v=[^\"]*)?",
+              rf"\1?v={stamp}",
+              text,
+          )
+          text = re.sub(
+              r"(\./profile/contributions\.svg)(?:\?v=[^\"]*)?",
+              rf"\1?v={stamp}",
+              text,
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Replace main history with current snapshot
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # On scheduled/manual runs, avoid creating a new snapshot when nothing changed.
+          if [ "$EVENT_NAME" != "push" ] && git diff --quiet -- README.md profile/streak.svg profile/contributions.svg; then
+            exit 0
+          fi
+
+          # Stage the complete current repository state, then create a root commit
+          # with no parents. Force-pushing that commit keeps main at exactly one
+          # visible commit while preserving the latest files.
+          git add -A
+          TREE_SHA=$(git write-tree)
+          ROOT_SHA=$(printf '%s\n' 'chore: refresh profile snapshot' | git commit-tree "$TREE_SHA")
+          git push --force origin "$ROOT_SHA":refs/heads/main

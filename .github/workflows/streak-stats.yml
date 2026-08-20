@@ -2,7 +2,8 @@ name: Update contribution stats
 
 on:
   schedule:
-    - cron: "15 * * * *"
+    # GitHub cron uses UTC: 00:00 = 21:00 and 12:00 = 09:00 in America/Sao_Paulo.
+    - cron: "0 0,12 * * *"
   push:
     branches:
       - main
@@ -10,7 +11,7 @@ on:
 
 jobs:
   build:
-    if: github.event_name != 'push' || github.event.head_commit.message != 'chore: refresh profile snapshot'
+    if: github.event_name != 'push' || github.event.head_commit.message != 'chore: refresh profile stats'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,19 +28,18 @@ jobs:
           options: >-
             user=${{ github.repository_owner }}&background=0D1117&border=2A2A2A&stroke=2A2A2A&ring=F5F5F5&fire=A3A3A3&currStreakNum=F5F5F5&sideNums=F5F5F5&currStreakLabel=A3A3A3&sideLabels=A3A3A3&dates=737373&border_radius=8&locale=en&short_numbers=false&starting_year=2026&disable_animations=true&card_width=760&card_height=190
           path: profile/streak.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PROFILE_STATS_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Customize contribution card
         env:
-          TOTAL_REPOSITORIES: "41"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PROFILE_STATS_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           PROFILE_TIMEZONE: "America/Sao_Paulo"
         run: python3 scripts/customize_streak_card.py
 
       - name: Generate contribution heatmap
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PROFILE_STATS_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: python3 scripts/generate_contribution_heatmap.py
 
@@ -70,22 +70,14 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
-      - name: Replace main history with current snapshot
-        env:
-          EVENT_NAME: ${{ github.event_name }}
+      - name: Commit refreshed profile stats
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # On scheduled/manual runs, avoid creating a new snapshot when nothing changed.
-          if [ "$EVENT_NAME" != "push" ] && git diff --quiet -- README.md profile/streak.svg profile/contributions.svg; then
+          if git diff --quiet -- README.md profile/streak.svg profile/contributions.svg; then
             exit 0
           fi
 
-          # Stage the complete current repository state, then create a root commit
-          # with no parents. Force-pushing that commit keeps main at exactly one
-          # visible commit while preserving the latest files.
-          git add -A
-          TREE_SHA=$(git write-tree)
-          ROOT_SHA=$(printf '%s\n' 'chore: refresh profile snapshot' | git commit-tree "$TREE_SHA")
-          git push --force origin "$ROOT_SHA":refs/heads/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- README.md profile/streak.svg profile/contributions.svg
+          git commit -m "chore: refresh profile stats"
+          git push

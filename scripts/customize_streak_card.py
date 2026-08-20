@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 
 CARD_PATH = Path("profile/streak.svg")
 REPOSITORY_COUNT_OVERRIDE = os.getenv("TOTAL_REPOSITORIES", "").strip()
+FALLBACK_REPOSITORY_COUNT = os.getenv("FALLBACK_REPOSITORY_COUNT", "41").strip()
+PRIVATE_TOKEN_CONFIGURED = os.getenv("PROFILE_STATS_TOKEN_CONFIGURED", "false").lower() == "true"
 PROFILE_TIMEZONE = os.getenv("PROFILE_TIMEZONE", "America/Sao_Paulo").strip()
 
 LEFT_X = "126.66666666667"
@@ -119,33 +121,29 @@ def fetch_profile_summary(username: str, token: str) -> tuple[str, str]:
     return repository_count, last_activity
 
 
-def fetch_public_fallback(username: str, token: str) -> tuple[str, str]:
-    repositories = github_json(
-        f"https://api.github.com/users/{username}/repos?per_page=100&type=owner",
-        token=token,
-    )
-    repository_count = str(len(repositories)) if isinstance(repositories, list) else "—"
-
+def fetch_public_activity(username: str, token: str) -> str:
     events = github_json(
         f"https://api.github.com/users/{username}/events/public?per_page=1",
         token=token,
     )
     if isinstance(events, list) and events and events[0].get("created_at"):
-        last_activity = format_activity_date(events[0]["created_at"])
-    else:
-        last_activity = "Last activity · unavailable"
-
-    return repository_count, last_activity
+        return format_activity_date(events[0]["created_at"])
+    return "Last activity · unavailable"
 
 
 def fetch_profile_data() -> tuple[str, str]:
     username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
     token = os.getenv("GITHUB_TOKEN", "").strip()
 
-    try:
-        repository_count, last_activity = fetch_profile_summary(username, token)
-    except Exception:
-        repository_count, last_activity = fetch_public_fallback(username, token)
+    if PRIVATE_TOKEN_CONFIGURED:
+        try:
+            repository_count, last_activity = fetch_profile_summary(username, token)
+        except Exception:
+            repository_count = FALLBACK_REPOSITORY_COUNT
+            last_activity = fetch_public_activity(username, token)
+    else:
+        repository_count = FALLBACK_REPOSITORY_COUNT
+        last_activity = fetch_public_activity(username, token)
 
     if REPOSITORY_COUNT_OVERRIDE:
         repository_count = REPOSITORY_COUNT_OVERRIDE

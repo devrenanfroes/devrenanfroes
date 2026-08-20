@@ -35,6 +35,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PROFILE_STATS_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           PROFILE_TIMEZONE: "America/Sao_Paulo"
+          PROFILE_STATS_TOKEN_CONFIGURED: ${{ secrets.PROFILE_STATS_TOKEN != '' }}
+          FALLBACK_REPOSITORY_COUNT: "41"
         run: python3 scripts/customize_streak_card.py
 
       - name: Generate contribution heatmap

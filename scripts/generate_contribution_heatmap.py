@@ -25,7 +25,7 @@ BACKGROUND = "#0D1117"
 BORDER = "#2A2A2A"
 
 
-def fetch_days(username: str) -> dict[dt.date, bool]:
+def fetch_days(username: str) -> dict[dt.date, int]:
     url = f"https://github.com/users/{username}/contributions"
     request = urllib.request.Request(
         url,
@@ -39,7 +39,7 @@ def fetch_days(username: str) -> dict[dt.date, bool]:
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                html = response.read().decode("utf-8", errors="replace")
+                source = response.read().decode("utf-8", errors="replace")
             break
         except Exception as exc:
             last_error = exc
@@ -48,27 +48,24 @@ def fetch_days(username: str) -> dict[dt.date, bool]:
     else:
         raise RuntimeError(f"Could not fetch contribution calendar: {last_error}")
 
-    days: dict[dt.date, bool] = {}
+    days: dict[dt.date, int] = {}
     tag_pattern = re.compile(
         r"<(?:td|rect)\b[^>]*\bdata-date=['\"](\d{4}-\d{2}-\d{2})['\"][^>]*>",
         re.IGNORECASE,
     )
 
-    for match in tag_pattern.finditer(html):
+    for match in tag_pattern.finditer(source):
         tag = match.group(0)
         date = dt.date.fromisoformat(match.group(1))
 
         count_match = re.search(r"\bdata-count=['\"](\d+)['\"]", tag, re.IGNORECASE)
-        level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
-
         if count_match:
-            active = int(count_match.group(1)) > 0
-        elif level_match:
-            active = int(level_match.group(1)) > 0
+            count = int(count_match.group(1))
         else:
-            active = False
+            level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
+            count = 1 if level_match and int(level_match.group(1)) > 0 else 0
 
-        days[date] = active
+        days[date] = count
 
     if not days:
         raise RuntimeError("Contribution calendar contained no contribution days")
@@ -76,16 +73,15 @@ def fetch_days(username: str) -> dict[dt.date, bool]:
     return days
 
 
-def build_weeks(days: dict[dt.date, bool]):
+def build_weeks(days: dict[dt.date, int]):
     today = dt.date.today()
     start = today - dt.timedelta(days=370)
 
-    visible = {date: active for date, active in days.items() if start <= date <= today}
+    visible = {date: count for date, count in days.items() if start <= date <= today}
     if not visible:
         raise RuntimeError("No recent contribution days were returned")
 
     first_date = min(visible)
-    # GitHub weeks are Sunday -> Saturday.
     first_sunday = first_date - dt.timedelta(days=(first_date.weekday() + 1) % 7)
 
     weeks = []
@@ -95,7 +91,7 @@ def build_weeks(days: dict[dt.date, bool]):
         for offset in range(7):
             date = week_start + dt.timedelta(days=offset)
             if start <= date <= today:
-                week_days.append((date, visible.get(date, False)))
+                week_days.append((date, visible.get(date, 0)))
         weeks.append((week_start, week_days))
         week_start += dt.timedelta(days=7)
 
@@ -143,14 +139,14 @@ def render_svg(username: str, weeks):
     offset = MAX_WEEKS - len(weeks)
     for source_week_index, (_, week_days) in enumerate(weeks):
         week_index = offset + source_week_index
-        for date, active in week_days:
+        for date, count in week_days:
             row = (date.weekday() + 1) % 7
             x = GRID_X + week_index * (CELL + GAP)
             y = GRID_Y + row * (CELL + GAP)
-            fill = ACTIVE if active else INACTIVE
-            label = "activity" if active else "no activity"
+            fill = ACTIVE if count > 0 else INACTIVE
+            noun = "contribution" if count == 1 else "contributions"
             lines.append(
-                f'  <rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{fill}"><title>{date.isoformat()}: {label}</title></rect>'
+                f'  <rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{fill}"><title>{date.isoformat()}: {count} {noun}</title></rect>'
             )
 
     lines.append("</svg>")

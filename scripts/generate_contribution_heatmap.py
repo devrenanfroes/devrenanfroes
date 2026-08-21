@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import datetime as dt
-import json
 import os
+import re
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -24,71 +25,91 @@ BACKGROUND = "#0D1117"
 BORDER = "#2A2A2A"
 
 
-def fetch_calendar(username: str, token: str):
+def fetch_days(username: str) -> dict[dt.date, bool]:
+    url = f"https://github.com/users/{username}/contributions"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "text/html,application/xhtml+xml",
+            "User-Agent": "devrenanfroes-profile-heatmap",
+        },
+    )
+
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                html = response.read().decode("utf-8", errors="replace")
+            break
+        except Exception as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(2)
+    else:
+        raise RuntimeError(f"Could not fetch contribution calendar: {last_error}")
+
+    days: dict[dt.date, bool] = {}
+    tag_pattern = re.compile(
+        r"<(?:td|rect)\b[^>]*\bdata-date=['\"](\d{4}-\d{2}-\d{2})['\"][^>]*>",
+        re.IGNORECASE,
+    )
+
+    for match in tag_pattern.finditer(html):
+        tag = match.group(0)
+        date = dt.date.fromisoformat(match.group(1))
+
+        count_match = re.search(r"\bdata-count=['\"](\d+)['\"]", tag, re.IGNORECASE)
+        level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
+
+        if count_match:
+            active = int(count_match.group(1)) > 0
+        elif level_match:
+            active = int(level_match.group(1)) > 0
+        else:
+            active = False
+
+        days[date] = active
+
+    if not days:
+        raise RuntimeError("Contribution calendar contained no contribution days")
+
+    return days
+
+
+def build_weeks(days: dict[dt.date, bool]):
     today = dt.date.today()
     start = today - dt.timedelta(days=370)
 
-    query = """
-    query($login: String!, $from: DateTime!, $to: DateTime!) {
-      user(login: $login) {
-        contributionsCollection(from: $from, to: $to) {
-          contributionCalendar {
-            weeks {
-              firstDay
-              contributionDays {
-                date
-                contributionCount
-                color
-              }
-            }
-          }
-        }
-      }
-    }
-    """
+    visible = {date: active for date, active in days.items() if start <= date <= today}
+    if not visible:
+        raise RuntimeError("No recent contribution days were returned")
 
-    payload = {
-        "query": query,
-        "variables": {
-            "login": username,
-            "from": f"{start.isoformat()}T00:00:00Z",
-            "to": f"{today.isoformat()}T23:59:59Z",
-        },
-    }
+    first_date = min(visible)
+    # GitHub weeks are Sunday -> Saturday.
+    first_sunday = first_date - dt.timedelta(days=(first_date.weekday() + 1) % 7)
 
-    request = urllib.request.Request(
-        "https://api.github.com/graphql",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "User-Agent": "devrenanfroes-profile-heatmap",
-        },
-        method="POST",
-    )
+    weeks = []
+    week_start = first_sunday
+    while week_start <= today:
+        week_days = []
+        for offset in range(7):
+            date = week_start + dt.timedelta(days=offset)
+            if start <= date <= today:
+                week_days.append((date, visible.get(date, False)))
+        weeks.append((week_start, week_days))
+        week_start += dt.timedelta(days=7)
 
-    with urllib.request.urlopen(request, timeout=30) as response:
-        data = json.load(response)
-
-    if data.get("errors"):
-        raise RuntimeError(json.dumps(data["errors"], ensure_ascii=False))
-
-    user = data.get("data", {}).get("user")
-    if not user:
-        raise RuntimeError(f"GitHub user not found: {username}")
-
-    return user["contributionsCollection"]["contributionCalendar"]["weeks"][-MAX_WEEKS:]
+    return weeks[-MAX_WEEKS:]
 
 
 def month_labels(weeks):
     labels = []
     previous_month = None
 
-    for index, week in enumerate(weeks):
-        days = week.get("contributionDays", [])
-        if not days:
+    for index, (_, week_days) in enumerate(weeks):
+        if not week_days:
             continue
-        first_date = dt.date.fromisoformat(days[0]["date"])
+        first_date = week_days[0][0]
         month = first_date.month
         if month != previous_month:
             labels.append((index, first_date.strftime("%b")))
@@ -119,16 +140,17 @@ def render_svg(username: str, weeks):
                 f'  <rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{INACTIVE}"/>'
             )
 
-    for week_index, week in enumerate(weeks):
-        for day in week.get("contributionDays", []):
-            date = dt.date.fromisoformat(day["date"])
+    offset = MAX_WEEKS - len(weeks)
+    for source_week_index, (_, week_days) in enumerate(weeks):
+        week_index = offset + source_week_index
+        for date, active in week_days:
             row = (date.weekday() + 1) % 7
             x = GRID_X + week_index * (CELL + GAP)
             y = GRID_Y + row * (CELL + GAP)
-            count = int(day.get("contributionCount", 0))
-            fill = ACTIVE if count > 0 else INACTIVE
+            fill = ACTIVE if active else INACTIVE
+            label = "activity" if active else "no activity"
             lines.append(
-                f'  <rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{fill}"><title>{date.isoformat()}: {count} contributions</title></rect>'
+                f'  <rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2" fill="{fill}"><title>{date.isoformat()}: {label}</title></rect>'
             )
 
     lines.append("</svg>")
@@ -137,16 +159,10 @@ def render_svg(username: str, weeks):
 
 def main():
     username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes")
-    token = os.getenv("GITHUB_TOKEN")
-
-    if not token:
-        raise RuntimeError("GITHUB_TOKEN is required")
 
     try:
-        weeks = fetch_calendar(username, token)
-        if not weeks:
-            raise RuntimeError("Contribution calendar returned no weeks")
-
+        days = fetch_days(username)
+        weeks = build_weeks(days)
         OUTPUT.parent.mkdir(parents=True, exist_ok=True)
         OUTPUT.write_text(render_svg(username, weeks), encoding="utf-8")
         print(f"Updated {OUTPUT}")

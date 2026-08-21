@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import html
+import json
 import os
 import re
 import time
@@ -10,6 +11,7 @@ from pathlib import Path
 
 
 CARD_PATH = Path("profile/streak.svg")
+REPOSITORY_COUNT = os.getenv("PROFILE_REPOSITORY_COUNT", "42").strip()
 
 WIDTH = 760
 HEIGHT = 190
@@ -24,13 +26,12 @@ SECONDARY = "#A3A3A3"
 MUTED = "#737373"
 
 
-def fetch_contribution_days(username: str) -> dict[dt.date, int]:
-    url = f"https://github.com/users/{username}/contributions"
+def fetch_url(url: str, accept: str, user_agent: str) -> bytes:
     request = urllib.request.Request(
         url,
         headers={
-            "Accept": "text/html,application/xhtml+xml",
-            "User-Agent": "devrenanfroes-profile-stats",
+            "Accept": accept,
+            "User-Agent": user_agent,
         },
     )
 
@@ -38,14 +39,42 @@ def fetch_contribution_days(username: str) -> dict[dt.date, int]:
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                source = response.read().decode("utf-8", errors="replace")
-            break
+                return response.read()
         except Exception as exc:
             last_error = exc
             if attempt < 2:
                 time.sleep(2)
-    else:
-        raise RuntimeError(f"Could not fetch contribution calendar: {last_error}")
+
+    raise RuntimeError(f"Could not fetch {url}: {last_error}")
+
+
+def fetch_days_from_contributions_api(username: str) -> dict[dt.date, int]:
+    source = fetch_url(
+        f"https://github-contributions-api.jogruber.de/v4/{username}?y=last",
+        "application/json",
+        "devrenanfroes-profile-stats",
+    )
+    payload = json.loads(source.decode("utf-8"))
+
+    days: dict[dt.date, int] = {}
+    for item in payload.get("contributions", []):
+        date_text = item.get("date")
+        if not date_text:
+            continue
+        days[dt.date.fromisoformat(date_text)] = int(item.get("count", 0))
+
+    if not days:
+        raise RuntimeError("Contribution API returned no contribution days")
+
+    return days
+
+
+def fetch_days_from_github(username: str) -> dict[dt.date, int]:
+    source = fetch_url(
+        f"https://github.com/users/{username}/contributions",
+        "text/html,application/xhtml+xml",
+        "devrenanfroes-profile-stats",
+    ).decode("utf-8", errors="replace")
 
     days: dict[dt.date, int] = {}
     tag_pattern = re.compile(
@@ -67,9 +96,20 @@ def fetch_contribution_days(username: str) -> dict[dt.date, int]:
         days[date] = count
 
     if not days:
-        raise RuntimeError("Contribution calendar contained no contribution days")
+        raise RuntimeError("GitHub contribution calendar contained no contribution days")
 
     return days
+
+
+def fetch_contribution_days(username: str) -> dict[dt.date, int]:
+    errors: list[str] = []
+    for loader in (fetch_days_from_contributions_api, fetch_days_from_github):
+        try:
+            return loader(username)
+        except Exception as exc:
+            errors.append(str(exc))
+
+    raise RuntimeError("; ".join(errors))
 
 
 def month_day(date: dt.date) -> str:
@@ -89,11 +129,10 @@ def summarize(days: dict[dt.date, int]):
     first_date = ordered_dates[0]
     total_contributions = sum(days[date] for date in ordered_dates)
     active_dates = [date for date in ordered_dates if days[date] > 0]
-    active_days = len(active_dates)
-
     latest_activity = active_dates[-1] if active_dates else None
 
-    # GitHub-style current streak: an empty current day gets a grace period.
+    # GitHub-style current streak: if today is still empty, yesterday is allowed
+    # to be the streak anchor without immediately breaking the streak.
     if days.get(today, 0) > 0:
         anchor = today
     elif days.get(today - dt.timedelta(days=1), 0) > 0:
@@ -122,7 +161,6 @@ def summarize(days: dict[dt.date, int]):
 
     return {
         "total": total_contributions,
-        "active_days": active_days,
         "last_activity": last_activity_text,
         "current_streak": current_streak,
         "streak_range": streak_range,
@@ -133,7 +171,6 @@ def summarize(days: dict[dt.date, int]):
 def render_svg(username: str, stats: dict[str, object]) -> str:
     title = html.escape(f"{username} GitHub contribution activity")
     total = stats["total"]
-    active_days = stats["active_days"]
     last_activity = html.escape(str(stats["last_activity"]))
     current_streak = stats["current_streak"]
     streak_range = html.escape(str(stats["streak_range"]))
@@ -151,7 +188,7 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" width="{WIDTH}" height="{HEIGHT}" role="img" aria-labelledby="title desc">
   <title id="title">{title}</title>
-  <desc id="desc">Total contributions, active days, latest activity and current streak.</desc>
+  <desc id="desc">Total contributions, repository count, latest activity and current streak.</desc>
   <defs>
     <clipPath id="outer"><rect width="{WIDTH}" height="{HEIGHT}" rx="8"/></clipPath>
     <mask id="ring-mask">
@@ -168,8 +205,8 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
     <text x="{LEFT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="14">Total Contributions</text>
     <text x="{LEFT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{total_range}</text>
 
-    <text x="{CENTER_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{active_days}</text>
-    <text x="{CENTER_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Active Days</text>
+    <text x="{CENTER_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{html.escape(REPOSITORY_COUNT)}</text>
+    <text x="{CENTER_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Repositories</text>
     <text x="{CENTER_X}" y="157.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{last_activity}</text>
 
     <circle cx="{RIGHT_X}" cy="68.5" r="40" fill="none" stroke="{PRIMARY}" stroke-width="5" mask="url(#ring-mask)"/>

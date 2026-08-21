@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import datetime as dt
+import json
 import os
 import re
 import sys
@@ -25,12 +26,11 @@ BACKGROUND = "#0D1117"
 BORDER = "#2A2A2A"
 
 
-def fetch_days(username: str) -> dict[dt.date, int]:
-    url = f"https://github.com/users/{username}/contributions"
+def fetch_url(url: str, accept: str) -> bytes:
     request = urllib.request.Request(
         url,
         headers={
-            "Accept": "text/html,application/xhtml+xml",
+            "Accept": accept,
             "User-Agent": "devrenanfroes-profile-heatmap",
         },
     )
@@ -39,14 +39,40 @@ def fetch_days(username: str) -> dict[dt.date, int]:
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                source = response.read().decode("utf-8", errors="replace")
-            break
+                return response.read()
         except Exception as exc:
             last_error = exc
             if attempt < 2:
                 time.sleep(2)
-    else:
-        raise RuntimeError(f"Could not fetch contribution calendar: {last_error}")
+
+    raise RuntimeError(f"Could not fetch {url}: {last_error}")
+
+
+def fetch_days_from_contributions_api(username: str) -> dict[dt.date, int]:
+    source = fetch_url(
+        f"https://github-contributions-api.jogruber.de/v4/{username}?y=last",
+        "application/json",
+    )
+    payload = json.loads(source.decode("utf-8"))
+
+    days: dict[dt.date, int] = {}
+    for item in payload.get("contributions", []):
+        date_text = item.get("date")
+        if not date_text:
+            continue
+        days[dt.date.fromisoformat(date_text)] = int(item.get("count", 0))
+
+    if not days:
+        raise RuntimeError("Contribution API returned no contribution days")
+
+    return days
+
+
+def fetch_days_from_github(username: str) -> dict[dt.date, int]:
+    source = fetch_url(
+        f"https://github.com/users/{username}/contributions",
+        "text/html,application/xhtml+xml",
+    ).decode("utf-8", errors="replace")
 
     days: dict[dt.date, int] = {}
     tag_pattern = re.compile(
@@ -68,9 +94,20 @@ def fetch_days(username: str) -> dict[dt.date, int]:
         days[date] = count
 
     if not days:
-        raise RuntimeError("Contribution calendar contained no contribution days")
+        raise RuntimeError("GitHub contribution calendar contained no contribution days")
 
     return days
+
+
+def fetch_days(username: str) -> dict[dt.date, int]:
+    errors: list[str] = []
+    for loader in (fetch_days_from_contributions_api, fetch_days_from_github):
+        try:
+            return loader(username)
+        except Exception as exc:
+            errors.append(str(exc))
+
+    raise RuntimeError("; ".join(errors))
 
 
 def build_weeks(days: dict[dt.date, int]):

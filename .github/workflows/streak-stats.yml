@@ -3,7 +3,6 @@ name: Update contribution stats
 on:
   schedule:
     # GitHub cron uses UTC: 00:00 = 21:00 and 12:00 = 09:00 in America/Sao_Paulo.
-    # A normal push also refreshes the profile immediately.
     - cron: "0 0,12 * * *"
   push:
     branches:
@@ -23,19 +22,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate contribution stats
+      - name: Generate contribution card
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-        run: |
-          mkdir -p /tmp/profile-stats
-          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
-            "https://streak-stats.demolab.com?user=${GITHUB_REPOSITORY_OWNER}&background=0D1117&border=2A2A2A&stroke=2A2A2A&ring=F5F5F5&fire=A3A3A3&currStreakNum=F5F5F5&sideNums=F5F5F5&currStreakLabel=A3A3A3&sideLabels=A3A3A3&dates=737373&border_radius=8&locale=en&short_numbers=false&starting_year=2026&disable_animations=true&card_width=760&card_height=190" \
-            --output /tmp/profile-stats/streak.svg
-
-      - name: Customize contribution card
-        env:
-          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-          RAW_STREAK_PATH: "/tmp/profile-stats/streak.svg"
         run: python3 scripts/customize_streak_card.py
 
       - name: Generate contribution heatmap

@@ -193,7 +193,7 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
     <clipPath id="outer"><rect width="{WIDTH}" height="{HEIGHT}" rx="8"/></clipPath>
     <mask id="ring-mask">
       <rect width="{WIDTH}" height="{HEIGHT}" fill="white"/>
-      <ellipse cx="{RIGHT_X}" cy="32" rx="13" ry="18" fill="black"/>
+      <ellipse cx="{RIGHT_X}" cy="32" rx="11" ry="15" fill="black"/>
     </mask>
   </defs>
   <g clip-path="url(#outer)">
@@ -209,8 +209,8 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
     <text x="{CENTER_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Repositories</text>
     <text x="{CENTER_X}" y="157.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{last_activity}</text>
 
-    <circle cx="{RIGHT_X}" cy="68.5" r="40" fill="none" stroke="{PRIMARY}" stroke-width="5" mask="url(#ring-mask)"/>
-    <g transform="translate({RIGHT_X}, 17)"><path d="{fire_path}" fill="{SECONDARY}"/></g>
+    <circle cx="{RIGHT_X}" cy="68.5" r="34" fill="none" stroke="{PRIMARY}" stroke-width="4" mask="url(#ring-mask)"/>
+    <g transform="translate({RIGHT_X}, 19)"><path d="{fire_path}" fill="{SECONDARY}"/></g>
     <text x="{RIGHT_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{current_streak}</text>
     <text x="{RIGHT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Current Streak</text>
     <text x="{RIGHT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{streak_range}</text>

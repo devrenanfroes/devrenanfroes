@@ -3,6 +3,7 @@ name: Update contribution stats
 on:
   schedule:
     # GitHub cron uses UTC: 00:00 = 21:00 and 12:00 = 09:00 in America/Sao_Paulo.
+    # A normal push also refreshes the profile immediately.
     - cron: "0 0,12 * * *"
   push:
     branches:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import html
 import os
 import re
 import time
@@ -9,16 +10,21 @@ from pathlib import Path
 
 
 CARD_PATH = Path("profile/streak.svg")
-RAW_CARD_PATH = Path(os.getenv("RAW_STREAK_PATH", str(CARD_PATH)))
 
-LEFT_X = "126.66666666667"
-CENTER_X = "380"
-RIGHT_X = "633.33333333333"
-LABEL_Y = "95.5"
-DETAIL_Y = "125.5"
+WIDTH = 760
+HEIGHT = 190
+LEFT_X = 126.66666666667
+CENTER_X = 380
+RIGHT_X = 633.33333333333
+
+BACKGROUND = "#0D1117"
+BORDER = "#2A2A2A"
+PRIMARY = "#F5F5F5"
+SECONDARY = "#A3A3A3"
+MUTED = "#737373"
 
 
-def fetch_contribution_days(username: str) -> dict[dt.date, bool]:
+def fetch_contribution_days(username: str) -> dict[dt.date, int]:
     url = f"https://github.com/users/{username}/contributions"
     request = urllib.request.Request(
         url,
@@ -32,7 +38,7 @@ def fetch_contribution_days(username: str) -> dict[dt.date, bool]:
     for attempt in range(3):
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                html = response.read().decode("utf-8", errors="replace")
+                source = response.read().decode("utf-8", errors="replace")
             break
         except Exception as exc:
             last_error = exc
@@ -41,27 +47,24 @@ def fetch_contribution_days(username: str) -> dict[dt.date, bool]:
     else:
         raise RuntimeError(f"Could not fetch contribution calendar: {last_error}")
 
-    days: dict[dt.date, bool] = {}
+    days: dict[dt.date, int] = {}
     tag_pattern = re.compile(
         r"<(?:td|rect)\b[^>]*\bdata-date=['\"](\d{4}-\d{2}-\d{2})['\"][^>]*>",
         re.IGNORECASE,
     )
 
-    for match in tag_pattern.finditer(html):
+    for match in tag_pattern.finditer(source):
         tag = match.group(0)
         date = dt.date.fromisoformat(match.group(1))
 
         count_match = re.search(r"\bdata-count=['\"](\d+)['\"]", tag, re.IGNORECASE)
-        level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
-
         if count_match:
-            active = int(count_match.group(1)) > 0
-        elif level_match:
-            active = int(level_match.group(1)) > 0
+            count = int(count_match.group(1))
         else:
-            active = False
+            level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
+            count = 1 if level_match and int(level_match.group(1)) > 0 else 0
 
-        days[date] = active
+        days[date] = count
 
     if not days:
         raise RuntimeError("Contribution calendar contained no contribution days")
@@ -69,105 +72,123 @@ def fetch_contribution_days(username: str) -> dict[dt.date, bool]:
     return days
 
 
-def profile_activity_summary(username: str) -> tuple[str, str]:
-    days = fetch_contribution_days(username)
+def month_day(date: dt.date) -> str:
+    return f"{date.strftime('%b')} {date.day}"
+
+
+def full_date(date: dt.date) -> str:
+    return f"{date.strftime('%b')} {date.day}, {date.year}"
+
+
+def summarize(days: dict[dt.date, int]):
     today = dt.date.today()
-    start = today - dt.timedelta(days=370)
-    recent = {date: active for date, active in days.items() if start <= date <= today}
+    ordered_dates = sorted(date for date in days if date <= today)
+    if not ordered_dates:
+        raise RuntimeError("Contribution calendar has no dates up to today")
 
-    active_dates = sorted(date for date, active in recent.items() if active)
-    active_days = str(len(active_dates))
+    first_date = ordered_dates[0]
+    total_contributions = sum(days[date] for date in ordered_dates)
+    active_dates = [date for date in ordered_dates if days[date] > 0]
+    active_days = len(active_dates)
 
-    if active_dates:
-        latest = active_dates[-1]
-        last_activity = f"Last activity · {latest.strftime('%b')} {latest.day}"
+    latest_activity = active_dates[-1] if active_dates else None
+
+    # GitHub-style current streak: an empty current day gets a grace period.
+    if days.get(today, 0) > 0:
+        anchor = today
+    elif days.get(today - dt.timedelta(days=1), 0) > 0:
+        anchor = today - dt.timedelta(days=1)
     else:
-        last_activity = "Last activity · unavailable"
+        anchor = None
 
-    return active_days, last_activity
+    current_streak = 0
+    streak_start = None
+    if anchor is not None:
+        cursor = anchor
+        while days.get(cursor, 0) > 0:
+            current_streak += 1
+            streak_start = cursor
+            cursor -= dt.timedelta(days=1)
 
+    if latest_activity:
+        last_activity_text = f"Last activity · {month_day(latest_activity)}"
+    else:
+        last_activity_text = "Last activity · unavailable"
 
-def extract_value(svg: str, marker: str) -> str:
-    pattern = rf"(<!-- {re.escape(marker)} -->.*?<text\b[^>]*>)\s*(.*?)\s*(</text>)"
-    match = re.search(pattern, svg, flags=re.DOTALL)
-    if not match:
-        raise RuntimeError(f"Could not find marker: {marker}")
-    return match.group(2).strip()
+    if current_streak and streak_start and anchor:
+        streak_range = f"{month_day(streak_start)} - {month_day(anchor)}"
+    else:
+        streak_range = "No active streak"
 
-
-def replace_value(svg: str, marker: str, value: str) -> str:
-    pattern = rf"(<!-- {re.escape(marker)} -->.*?<text\b[^>]*>)\s*.*?\s*(</text>)"
-    replacement = rf"\1\n                        {value}\n                    \2"
-    updated, count = re.subn(pattern, replacement, svg, count=1, flags=re.DOTALL)
-    if count != 1:
-        raise RuntimeError(f"Could not replace marker: {marker}")
-    return updated
-
-
-def replace_marker_block(svg: str, marker: str, old: str, new: str) -> str:
-    pattern = rf"(<!-- {re.escape(marker)} -->.*?)(?=<!--|</g>\s*</g>)"
-    match = re.search(pattern, svg, flags=re.DOTALL)
-    if not match:
-        raise RuntimeError(f"Could not find block: {marker}")
-    block = match.group(1)
-    updated_block = block.replace(old, new, 1)
-    if updated_block == block:
-        raise RuntimeError(f"Could not update block: {marker}")
-    return svg[: match.start(1)] + updated_block + svg[match.end(1) :]
+    return {
+        "total": total_contributions,
+        "active_days": active_days,
+        "last_activity": last_activity_text,
+        "current_streak": current_streak,
+        "streak_range": streak_range,
+        "total_range": f"{full_date(first_date)} - Present",
+    }
 
 
-def set_marker_translate(svg: str, marker: str, x: str, y: str) -> str:
-    pattern = rf"(<!-- {re.escape(marker)} -->\s*<g transform='translate\()([^,]+),\s*([^)]+)(\)'>)"
+def render_svg(username: str, stats: dict[str, object]) -> str:
+    title = html.escape(f"{username} GitHub contribution activity")
+    total = stats["total"]
+    active_days = stats["active_days"]
+    last_activity = html.escape(str(stats["last_activity"]))
+    current_streak = stats["current_streak"]
+    streak_range = html.escape(str(stats["streak_range"]))
+    total_range = html.escape(str(stats["total_range"]))
 
-    def replacement(match: re.Match[str]) -> str:
-        return f"{match.group(1)}{x}, {y}{match.group(4)}"
+    fire_path = (
+        "M 1.5 0.67 C 1.5 0.67 2.24 3.32 2.24 5.47 "
+        "C 2.24 7.53 0.89 9.2 -1.17 9.2 C -3.23 9.2 -4.79 7.53 -4.79 5.47 "
+        "L -4.76 5.11 C -6.78 7.51 -8 10.62 -8 13.99 C -8 18.41 -4.42 22 0 22 "
+        "C 4.42 22 8 18.41 8 13.99 C 8 8.6 5.41 3.79 1.5 0.67 Z "
+        "M -0.29 19 C -2.07 19 -3.51 17.6 -3.51 15.86 C -3.51 14.24 -2.46 13.1 -0.7 12.74 "
+        "C 1.07 12.38 2.9 11.53 3.92 10.16 C 4.31 11.45 4.51 12.81 4.51 14.2 "
+        "C 4.51 16.85 2.36 19 -0.29 19 Z"
+    )
 
-    updated, count = re.subn(pattern, replacement, svg, count=1)
-    if count != 1:
-        raise RuntimeError(f"Could not position marker: {marker}")
-    return updated
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" width="{WIDTH}" height="{HEIGHT}" role="img" aria-labelledby="title desc">
+  <title id="title">{title}</title>
+  <desc id="desc">Total contributions, active days, latest activity and current streak.</desc>
+  <defs>
+    <clipPath id="outer"><rect width="{WIDTH}" height="{HEIGHT}" rx="8"/></clipPath>
+    <mask id="ring-mask">
+      <rect width="{WIDTH}" height="{HEIGHT}" fill="white"/>
+      <ellipse cx="{RIGHT_X}" cy="32" rx="13" ry="18" fill="black"/>
+    </mask>
+  </defs>
+  <g clip-path="url(#outer)">
+    <rect x="0.5" y="0.5" width="759" height="189" rx="8" fill="{BACKGROUND}" stroke="{BORDER}"/>
+    <line x1="253.33333333333" y1="26.75" x2="253.33333333333" y2="167.5" stroke="{BORDER}"/>
+    <line x1="506.66666666667" y1="26.75" x2="506.66666666667" y2="167.5" stroke="{BORDER}"/>
+
+    <text x="{LEFT_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{total:,}</text>
+    <text x="{LEFT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="14">Total Contributions</text>
+    <text x="{LEFT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{total_range}</text>
+
+    <text x="{CENTER_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{active_days}</text>
+    <text x="{CENTER_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Active Days</text>
+    <text x="{CENTER_X}" y="157.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{last_activity}</text>
+
+    <circle cx="{RIGHT_X}" cy="68.5" r="40" fill="none" stroke="{PRIMARY}" stroke-width="5" mask="url(#ring-mask)"/>
+    <g transform="translate({RIGHT_X}, 17)"><path d="{fire_path}" fill="{SECONDARY}"/></g>
+    <text x="{RIGHT_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{current_streak}</text>
+    <text x="{RIGHT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Current Streak</text>
+    <text x="{RIGHT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{streak_range}</text>
+  </g>
+</svg>
+'''
 
 
 def main() -> None:
-    svg = RAW_CARD_PATH.read_text(encoding="utf-8")
     username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
-    active_days, last_activity = profile_activity_summary(username)
-
-    current_streak = extract_value(svg, "Current Streak big number")
-    current_range = extract_value(svg, "Current Streak range")
-
-    svg = set_marker_translate(svg, "Total Contributions label", LEFT_X, LABEL_Y)
-    svg = set_marker_translate(svg, "Total Contributions range", LEFT_X, DETAIL_Y)
-
-    # Center column: a fully automatic metric from the same contribution calendar.
-    svg = replace_value(svg, "Current Streak big number", active_days)
-    svg = replace_value(svg, "Current Streak label", "Active Days")
-    svg = replace_value(svg, "Current Streak range", last_activity)
-    svg = set_marker_translate(svg, "Current Streak label", CENTER_X, LABEL_Y)
-    svg = set_marker_translate(svg, "Current Streak range", CENTER_X, DETAIL_Y)
-    svg = replace_marker_block(svg, "Current Streak range", "y='21'", "y='32'")
-    svg = replace_marker_block(svg, "Current Streak range", "fill='#737373'", "fill='#a3a3a3'")
-
-    # Move the streak ring/fire to the right column.
-    svg = svg.replace("cx='380' cy='32'", f"cx='{RIGHT_X}' cy='32'", 1)
-    svg = svg.replace("cx='380' cy='68.5'", f"cx='{RIGHT_X}' cy='68.5'", 1)
-    svg = svg.replace("translate(380, 17)", f"translate({RIGHT_X}, 17)", 1)
-
-    # Right column: current streak from the streak-stats generator.
-    svg = replace_value(svg, "Longest Streak big number", current_streak)
-    svg = replace_value(svg, "Longest Streak label", "Current Streak")
-    svg = replace_value(svg, "Longest Streak range", current_range)
-    svg = set_marker_translate(svg, "Longest Streak label", RIGHT_X, LABEL_Y)
-    svg = set_marker_translate(svg, "Longest Streak range", RIGHT_X, DETAIL_Y)
-    svg = replace_marker_block(
-        svg,
-        "Longest Streak label",
-        "font-weight='400'",
-        "font-weight='700'",
-    )
-
+    days = fetch_contribution_days(username)
+    stats = summarize(days)
     CARD_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CARD_PATH.write_text(svg, encoding="utf-8")
+    CARD_PATH.write_text(render_svg(username, stats), encoding="utf-8")
+    print(f"Updated {CARD_PATH}")
 
 
 if __name__ == "__main__":

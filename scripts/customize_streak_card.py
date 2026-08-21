@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 import os
 import re
+import time
 import urllib.request
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 
 CARD_PATH = Path("profile/streak.svg")
-REPOSITORY_COUNT_OVERRIDE = os.getenv("TOTAL_REPOSITORIES", "").strip()
-FALLBACK_REPOSITORY_COUNT = os.getenv("FALLBACK_REPOSITORY_COUNT", "41").strip()
-PRIVATE_TOKEN_CONFIGURED = os.getenv("PROFILE_STATS_TOKEN_CONFIGURED", "false").lower() == "true"
-PROFILE_TIMEZONE = os.getenv("PROFILE_TIMEZONE", "America/Sao_Paulo").strip()
+RAW_CARD_PATH = Path(os.getenv("RAW_STREAK_PATH", str(CARD_PATH)))
 
 LEFT_X = "126.66666666667"
 CENTER_X = "380"
@@ -22,133 +18,73 @@ LABEL_Y = "95.5"
 DETAIL_Y = "125.5"
 
 
-def github_json(url: str, *, token: str = "", payload: dict | None = None):
-    data = None if payload is None else json.dumps(payload).encode("utf-8")
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "devrenanfroes-profile-stats",
-    }
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    if data is not None:
-        headers["Content-Type"] = "application/json"
-
+def fetch_contribution_days(username: str) -> dict[dt.date, bool]:
+    url = f"https://github.com/users/{username}/contributions"
     request = urllib.request.Request(
         url,
-        data=data,
-        headers=headers,
-        method="POST" if data is not None else "GET",
-    )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return json.load(response)
-
-
-def format_activity_date(value: str) -> str:
-    timestamp = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
-    try:
-        timezone = ZoneInfo(PROFILE_TIMEZONE)
-    except Exception:
-        timezone = dt.timezone(dt.timedelta(hours=-3))
-
-    local_time = timestamp.astimezone(timezone)
-    return f"Last activity · {local_time.strftime('%b')} {local_time.day}"
-
-
-def fetch_profile_summary(username: str, token: str) -> tuple[str, str]:
-    today = dt.date.today()
-    start = today - dt.timedelta(days=370)
-
-    query = """
-    query($login: String!, $from: DateTime!, $to: DateTime!) {
-      user(login: $login) {
-        repositories(first: 1, ownerAffiliations: OWNER) {
-          totalCount
-        }
-        contributionsCollection(from: $from, to: $to) {
-          commitContributionsByRepository(maxRepositories: 100) {
-            contributions(
-              first: 1
-              orderBy: {field: OCCURRED_AT, direction: DESC}
-            ) {
-              nodes {
-                occurredAt
-              }
-            }
-          }
-        }
-      }
-    }
-    """
-
-    data = github_json(
-        "https://api.github.com/graphql",
-        token=token,
-        payload={
-            "query": query,
-            "variables": {
-                "login": username,
-                "from": f"{start.isoformat()}T00:00:00Z",
-                "to": f"{today.isoformat()}T23:59:59Z",
-            },
+        headers={
+            "Accept": "text/html,application/xhtml+xml",
+            "User-Agent": "devrenanfroes-profile-stats",
         },
     )
 
-    if data.get("errors"):
-        raise RuntimeError(json.dumps(data["errors"], ensure_ascii=False))
-
-    user = data.get("data", {}).get("user")
-    if not user:
-        raise RuntimeError(f"GitHub user not found: {username}")
-
-    repository_count = str(user["repositories"]["totalCount"])
-
-    latest_timestamp: str | None = None
-    groups = user["contributionsCollection"]["commitContributionsByRepository"]
-    for group in groups:
-        nodes = group.get("contributions", {}).get("nodes", [])
-        if not nodes:
-            continue
-
-        occurred_at = nodes[0].get("occurredAt")
-        if occurred_at and (latest_timestamp is None or occurred_at > latest_timestamp):
-            latest_timestamp = occurred_at
-
-    if latest_timestamp is None:
-        last_activity = "Last activity · no recent contributions"
-    else:
-        last_activity = format_activity_date(latest_timestamp)
-
-    return repository_count, last_activity
-
-
-def fetch_public_activity(username: str, token: str) -> str:
-    events = github_json(
-        f"https://api.github.com/users/{username}/events/public?per_page=1",
-        token=token,
-    )
-    if isinstance(events, list) and events and events[0].get("created_at"):
-        return format_activity_date(events[0]["created_at"])
-    return "Last activity · unavailable"
-
-
-def fetch_profile_data() -> tuple[str, str]:
-    username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
-    token = os.getenv("GITHUB_TOKEN", "").strip()
-
-    if PRIVATE_TOKEN_CONFIGURED:
+    last_error: Exception | None = None
+    for attempt in range(3):
         try:
-            repository_count, last_activity = fetch_profile_summary(username, token)
-        except Exception:
-            repository_count = FALLBACK_REPOSITORY_COUNT
-            last_activity = fetch_public_activity(username, token)
+            with urllib.request.urlopen(request, timeout=30) as response:
+                html = response.read().decode("utf-8", errors="replace")
+            break
+        except Exception as exc:
+            last_error = exc
+            if attempt < 2:
+                time.sleep(2)
     else:
-        repository_count = FALLBACK_REPOSITORY_COUNT
-        last_activity = fetch_public_activity(username, token)
+        raise RuntimeError(f"Could not fetch contribution calendar: {last_error}")
 
-    if REPOSITORY_COUNT_OVERRIDE:
-        repository_count = REPOSITORY_COUNT_OVERRIDE
+    days: dict[dt.date, bool] = {}
+    tag_pattern = re.compile(
+        r"<(?:td|rect)\b[^>]*\bdata-date=['\"](\d{4}-\d{2}-\d{2})['\"][^>]*>",
+        re.IGNORECASE,
+    )
 
-    return repository_count, last_activity
+    for match in tag_pattern.finditer(html):
+        tag = match.group(0)
+        date = dt.date.fromisoformat(match.group(1))
+
+        count_match = re.search(r"\bdata-count=['\"](\d+)['\"]", tag, re.IGNORECASE)
+        level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
+
+        if count_match:
+            active = int(count_match.group(1)) > 0
+        elif level_match:
+            active = int(level_match.group(1)) > 0
+        else:
+            active = False
+
+        days[date] = active
+
+    if not days:
+        raise RuntimeError("Contribution calendar contained no contribution days")
+
+    return days
+
+
+def profile_activity_summary(username: str) -> tuple[str, str]:
+    days = fetch_contribution_days(username)
+    today = dt.date.today()
+    start = today - dt.timedelta(days=370)
+    recent = {date: active for date, active in days.items() if start <= date <= today}
+
+    active_dates = sorted(date for date, active in recent.items() if active)
+    active_days = str(len(active_dates))
+
+    if active_dates:
+        latest = active_dates[-1]
+        last_activity = f"Last activity · {latest.strftime('%b')} {latest.day}"
+    else:
+        last_activity = "Last activity · unavailable"
+
+    return active_days, last_activity
 
 
 def extract_value(svg: str, marker: str) -> str:
@@ -193,8 +129,9 @@ def set_marker_translate(svg: str, marker: str, x: str, y: str) -> str:
 
 
 def main() -> None:
-    svg = CARD_PATH.read_text(encoding="utf-8")
-    repository_count, last_activity = fetch_profile_data()
+    svg = RAW_CARD_PATH.read_text(encoding="utf-8")
+    username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
+    active_days, last_activity = profile_activity_summary(username)
 
     current_streak = extract_value(svg, "Current Streak big number")
     current_range = extract_value(svg, "Current Streak range")
@@ -202,18 +139,21 @@ def main() -> None:
     svg = set_marker_translate(svg, "Total Contributions label", LEFT_X, LABEL_Y)
     svg = set_marker_translate(svg, "Total Contributions range", LEFT_X, DETAIL_Y)
 
-    svg = replace_value(svg, "Current Streak big number", repository_count)
-    svg = replace_value(svg, "Current Streak label", "Repositories")
+    # Center column: a fully automatic metric from the same contribution calendar.
+    svg = replace_value(svg, "Current Streak big number", active_days)
+    svg = replace_value(svg, "Current Streak label", "Active Days")
     svg = replace_value(svg, "Current Streak range", last_activity)
     svg = set_marker_translate(svg, "Current Streak label", CENTER_X, LABEL_Y)
     svg = set_marker_translate(svg, "Current Streak range", CENTER_X, DETAIL_Y)
     svg = replace_marker_block(svg, "Current Streak range", "y='21'", "y='32'")
     svg = replace_marker_block(svg, "Current Streak range", "fill='#737373'", "fill='#a3a3a3'")
 
+    # Move the streak ring/fire to the right column.
     svg = svg.replace("cx='380' cy='32'", f"cx='{RIGHT_X}' cy='32'", 1)
     svg = svg.replace("cx='380' cy='68.5'", f"cx='{RIGHT_X}' cy='68.5'", 1)
     svg = svg.replace("translate(380, 17)", f"translate({RIGHT_X}, 17)", 1)
 
+    # Right column: current streak from the streak-stats generator.
     svg = replace_value(svg, "Longest Streak big number", current_streak)
     svg = replace_value(svg, "Longest Streak label", "Current Streak")
     svg = replace_value(svg, "Longest Streak range", current_range)
@@ -226,6 +166,7 @@ def main() -> None:
         "font-weight='700'",
     )
 
+    CARD_PATH.parent.mkdir(parents=True, exist_ok=True)
     CARD_PATH.write_text(svg, encoding="utf-8")
 
 

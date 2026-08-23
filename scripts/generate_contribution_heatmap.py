@@ -101,7 +101,7 @@ def fetch_days_from_github(username: str) -> dict[dt.date, int]:
 
 def fetch_days(username: str) -> dict[dt.date, int]:
     errors: list[str] = []
-    for loader in (fetch_days_from_contributions_api, fetch_days_from_github):
+    for loader in (fetch_days_from_github, fetch_days_from_contributions_api):
         try:
             return loader(username)
         except Exception as exc:

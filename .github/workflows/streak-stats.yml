@@ -2,8 +2,8 @@ name: Update contribution stats
 
 on:
   schedule:
-    # GitHub cron uses UTC: 00:00 = 21:00 and 12:00 = 09:00 in America/Sao_Paulo.
-    - cron: "0 0,12 * * *"
+    # Run hourly away from the top of the hour to reduce GitHub scheduler delays.
+    - cron: "17 * * * *"
   push:
     branches:
       - main

@@ -7,11 +7,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "README.md"
+      - "profile/**"
   workflow_dispatch:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'push' || github.event.head_commit.message != 'chore: refresh profile stats' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,9 +29,6 @@ jobs:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GITHUB_TOKEN: ${{ github.token }}
           PROFILE_TOKEN: ${{ secrets.PROFILE_PAT }}
-          # Verified total owned repositories as of 2026-08-24.
-          # PROFILE_PAT, when configured, lets the script replace this fallback
-          # with GitHub's authenticated account-wide repository total.
           PROFILE_REPOSITORY_COUNT: "42"
         run: python3 scripts/customize_streak_card.py
 

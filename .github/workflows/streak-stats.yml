@@ -25,11 +25,19 @@ jobs:
       - name: Generate contribution card
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PROFILE_TOKEN: ${{ secrets.PROFILE_PAT }}
+          # Verified total owned repositories as of 2026-08-24.
+          # PROFILE_PAT, when configured, lets the script replace this fallback
+          # with GitHub's authenticated account-wide repository total.
+          PROFILE_REPOSITORY_COUNT: "42"
         run: python3 scripts/customize_streak_card.py
 
       - name: Generate contribution heatmap
         env:
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PROFILE_TOKEN: ${{ secrets.PROFILE_PAT }}
         run: python3 scripts/generate_contribution_heatmap.py
 
       - name: Refresh README image cache

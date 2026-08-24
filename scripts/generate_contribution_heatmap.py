@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 
 import datetime as dt
-import json
-import os
-import re
 import sys
-import time
-import urllib.request
 from pathlib import Path
+
+from customize_streak_card import LOCAL_TZ, fetch_contribution_days
 
 OUTPUT = Path("profile/contributions.svg")
 WIDTH = 760
@@ -26,92 +23,8 @@ BACKGROUND = "#0D1117"
 BORDER = "#2A2A2A"
 
 
-def fetch_url(url: str, accept: str) -> bytes:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": accept,
-            "User-Agent": "devrenanfroes-profile-heatmap",
-        },
-    )
-
-    last_error: Exception | None = None
-    for attempt in range(3):
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                return response.read()
-        except Exception as exc:
-            last_error = exc
-            if attempt < 2:
-                time.sleep(2)
-
-    raise RuntimeError(f"Could not fetch {url}: {last_error}")
-
-
-def fetch_days_from_contributions_api(username: str) -> dict[dt.date, int]:
-    source = fetch_url(
-        f"https://github-contributions-api.jogruber.de/v4/{username}?y=last",
-        "application/json",
-    )
-    payload = json.loads(source.decode("utf-8"))
-
-    days: dict[dt.date, int] = {}
-    for item in payload.get("contributions", []):
-        date_text = item.get("date")
-        if not date_text:
-            continue
-        days[dt.date.fromisoformat(date_text)] = int(item.get("count", 0))
-
-    if not days:
-        raise RuntimeError("Contribution API returned no contribution days")
-
-    return days
-
-
-def fetch_days_from_github(username: str) -> dict[dt.date, int]:
-    source = fetch_url(
-        f"https://github.com/users/{username}/contributions",
-        "text/html,application/xhtml+xml",
-    ).decode("utf-8", errors="replace")
-
-    days: dict[dt.date, int] = {}
-    tag_pattern = re.compile(
-        r"<(?:td|rect)\b[^>]*\bdata-date=['\"](\d{4}-\d{2}-\d{2})['\"][^>]*>",
-        re.IGNORECASE,
-    )
-
-    for match in tag_pattern.finditer(source):
-        tag = match.group(0)
-        date = dt.date.fromisoformat(match.group(1))
-
-        count_match = re.search(r"\bdata-count=['\"](\d+)['\"]", tag, re.IGNORECASE)
-        if count_match:
-            count = int(count_match.group(1))
-        else:
-            level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
-            count = 1 if level_match and int(level_match.group(1)) > 0 else 0
-
-        days[date] = count
-
-    if not days:
-        raise RuntimeError("GitHub contribution calendar contained no contribution days")
-
-    return days
-
-
-def fetch_days(username: str) -> dict[dt.date, int]:
-    errors: list[str] = []
-    for loader in (fetch_days_from_github, fetch_days_from_contributions_api):
-        try:
-            return loader(username)
-        except Exception as exc:
-            errors.append(str(exc))
-
-    raise RuntimeError("; ".join(errors))
-
-
 def build_weeks(days: dict[dt.date, int]):
-    today = dt.date.today()
+    today = dt.datetime.now(LOCAL_TZ).date()
     start = today - dt.timedelta(days=370)
 
     visible = {date: count for date, count in days.items() if start <= date <= today}
@@ -138,16 +51,13 @@ def build_weeks(days: dict[dt.date, int]):
 def month_labels(weeks):
     labels = []
     previous_month = None
-
     for index, (_, week_days) in enumerate(weeks):
         if not week_days:
             continue
         first_date = week_days[0][0]
-        month = first_date.month
-        if month != previous_month:
+        if first_date.month != previous_month:
             labels.append((index, first_date.strftime("%b")))
-            previous_month = month
-
+            previous_month = first_date.month
     return labels
 
 
@@ -191,17 +101,21 @@ def render_svg(username: str, weeks):
 
 
 def main():
-    username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes")
+    import os
 
+    username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
     try:
-        days = fetch_days(username)
+        days = fetch_contribution_days(username)
         weeks = build_weeks(days)
         OUTPUT.parent.mkdir(parents=True, exist_ok=True)
         OUTPUT.write_text(render_svg(username, weeks), encoding="utf-8")
         print(f"Updated {OUTPUT}")
     except Exception as exc:
         if OUTPUT.exists():
-            print(f"Warning: heatmap update failed; preserving existing SVG: {exc}", file=sys.stderr)
+            print(
+                f"Warning: heatmap update failed; preserving existing SVG: {exc}",
+                file=sys.stderr,
+            )
             return
         raise
 

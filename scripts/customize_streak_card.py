@@ -10,7 +10,6 @@ import urllib.request
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-
 CARD_PATH = Path("profile/streak.svg")
 LOCAL_TZ = ZoneInfo("America/Sao_Paulo")
 DEFAULT_REPOSITORY_COUNT = 42
@@ -41,63 +40,14 @@ def read_request(request: urllib.request.Request) -> bytes:
     raise RuntimeError(f"GitHub/profile request failed: {last_error}")
 
 
-def fetch_url(url: str, accept: str, user_agent: str) -> bytes:
-    return read_request(
-        urllib.request.Request(
-            url,
-            headers={"Accept": accept, "User-Agent": user_agent},
-        )
-    )
-
-
 def available_github_token() -> str:
-    return (
-        os.getenv("PROFILE_TOKEN", "").strip()
-        or os.getenv("GITHUB_TOKEN", "").strip()
-    )
+    return os.getenv("PROFILE_TOKEN", "").strip() or os.getenv("GITHUB_TOKEN", "").strip()
 
 
-def fetch_profile_from_graphql(
-    username: str, token: str | None = None
-) -> tuple[dict[dt.date, int], int]:
-    token = (token or available_github_token()).strip()
-    if not token:
-        raise RuntimeError("No GitHub token available for GraphQL")
-
-    now = dt.datetime.now(dt.timezone.utc)
-    start = now - dt.timedelta(days=364)
-    query = """
-    query($login: String!, $from: DateTime!, $to: DateTime!) {
-      user(login: $login) {
-        repositories(ownerAffiliations: [OWNER], first: 1) {
-          totalCount
-        }
-        contributionsCollection(from: $from, to: $to) {
-          contributionCalendar {
-            weeks {
-              contributionDays {
-                date
-                contributionCount
-              }
-            }
-          }
-        }
-      }
-    }
-    """
-    body = json.dumps(
-        {
-            "query": query,
-            "variables": {
-                "login": username,
-                "from": start.isoformat().replace("+00:00", "Z"),
-                "to": now.isoformat().replace("+00:00", "Z"),
-            },
-        }
-    ).encode("utf-8")
+def graphql(query: str, variables: dict, token: str) -> dict:
     request = urllib.request.Request(
         "https://api.github.com/graphql",
-        data=body,
+        data=json.dumps({"query": query, "variables": variables}).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github+json",
@@ -109,8 +59,36 @@ def fetch_profile_from_graphql(
     payload = json.loads(read_request(request).decode("utf-8"))
     if payload.get("errors"):
         raise RuntimeError(f"GitHub GraphQL returned errors: {payload['errors']}")
+    return payload.get("data", {})
 
-    user = payload.get("data", {}).get("user")
+
+def fetch_recent_from_graphql(username: str, token: str) -> tuple[dict[dt.date, int], int]:
+    now = dt.datetime.now(dt.timezone.utc)
+    start = now - dt.timedelta(days=364)
+    query = """
+    query($login: String!, $from: DateTime!, $to: DateTime!) {
+      user(login: $login) {
+        repositories(ownerAffiliations: [OWNER], first: 1) { totalCount }
+        contributionsCollection(from: $from, to: $to) {
+          contributionCalendar {
+            weeks {
+              contributionDays { date contributionCount }
+            }
+          }
+        }
+      }
+    }
+    """
+    data = graphql(
+        query,
+        {
+            "login": username,
+            "from": start.isoformat().replace("+00:00", "Z"),
+            "to": now.isoformat().replace("+00:00", "Z"),
+        },
+        token,
+    )
+    user = data.get("user")
     if not user:
         raise RuntimeError("GitHub GraphQL returned no user")
 
@@ -119,19 +97,25 @@ def fetch_profile_from_graphql(
     for week in calendar.get("weeks", []):
         for item in week.get("contributionDays", []):
             days[dt.date.fromisoformat(item["date"])] = int(item["contributionCount"])
-
     if not days:
         raise RuntimeError("GitHub GraphQL returned no contribution days")
 
-    repository_count = int(user.get("repositories", {}).get("totalCount", 0))
-    return days, repository_count
+    return days, int(user.get("repositories", {}).get("totalCount", 0))
+
+
+def fetch_url(url: str, accept: str) -> bytes:
+    return read_request(
+        urllib.request.Request(
+            url,
+            headers={"Accept": accept, "User-Agent": "devrenanfroes-profile-stats"},
+        )
+    )
 
 
 def fetch_days_from_github_html(username: str) -> dict[dt.date, int]:
     source = fetch_url(
         f"https://github.com/users/{username}/contributions",
         "text/html,application/xhtml+xml",
-        "devrenanfroes-profile-stats",
     ).decode("utf-8", errors="replace")
 
     days: dict[dt.date, int] = {}
@@ -156,12 +140,12 @@ def fetch_days_from_github_html(username: str) -> dict[dt.date, int]:
 
 
 def fetch_days_from_contributions_api(username: str) -> dict[dt.date, int]:
-    source = fetch_url(
-        f"https://github-contributions-api.jogruber.de/v4/{username}?y=last",
-        "application/json",
-        "devrenanfroes-profile-stats",
+    payload = json.loads(
+        fetch_url(
+            f"https://github-contributions-api.jogruber.de/v4/{username}?y=last",
+            "application/json",
+        ).decode("utf-8")
     )
-    payload = json.loads(source.decode("utf-8"))
     days: dict[dt.date, int] = {}
     for item in payload.get("contributions", []):
         date_text = item.get("date")
@@ -172,56 +156,91 @@ def fetch_days_from_contributions_api(username: str) -> dict[dt.date, int]:
     return days
 
 
-def fetch_contribution_days(username: str) -> dict[dt.date, int]:
+def fetch_recent_days(username: str) -> tuple[dict[dt.date, int], int]:
+    token = available_github_token()
     errors: list[str] = []
-    loaders = (
-        lambda name: fetch_profile_from_graphql(name)[0],
-        fetch_days_from_github_html,
-        fetch_days_from_contributions_api,
-    )
-    for loader in loaders:
+    if token:
         try:
-            return loader(username)
+            return fetch_recent_from_graphql(username, token)
+        except Exception as exc:
+            errors.append(str(exc))
+
+    for loader in (fetch_days_from_github_html, fetch_days_from_contributions_api):
+        try:
+            return loader(username), 0
         except Exception as exc:
             errors.append(str(exc))
     raise RuntimeError("; ".join(errors))
 
 
-def repository_count(username: str) -> int:
-    configured = int(
-        os.getenv("PROFILE_REPOSITORY_COUNT", str(DEFAULT_REPOSITORY_COUNT)).strip()
-    )
+def repository_count(graphql_count: int) -> int:
+    if graphql_count > 0:
+        return graphql_count
+    return int(os.getenv("PROFILE_REPOSITORY_COUNT", str(DEFAULT_REPOSITORY_COUNT)).strip())
 
-    # The default Actions token is repository-scoped and cannot see all private
-    # repositories owned by the profile. If a broader PROFILE_TOKEN is supplied,
-    # use GitHub's official GraphQL total; otherwise keep the verified account total.
-    profile_token = os.getenv("PROFILE_TOKEN", "").strip()
-    if profile_token:
-        try:
-            _, count = fetch_profile_from_graphql(username, profile_token)
-            if count > 0:
-                return count
-        except Exception as exc:
-            print(f"Warning: repository count lookup failed: {exc}")
-    return configured
+
+def fetch_all_time_total(username: str, recent_days: dict[dt.date, int]) -> int:
+    token = available_github_token()
+    if not token:
+        return sum(recent_days.values())
+
+    try:
+        created_query = """
+        query($login: String!) {
+          user(login: $login) { createdAt }
+        }
+        """
+        created_data = graphql(created_query, {"login": username}, token)
+        created_at = dt.datetime.fromisoformat(
+            created_data["user"]["createdAt"].replace("Z", "+00:00")
+        )
+        now = dt.datetime.now(dt.timezone.utc)
+
+        total = 0
+        yearly_query = """
+        query($login: String!, $from: DateTime!, $to: DateTime!) {
+          user(login: $login) {
+            contributionsCollection(from: $from, to: $to) {
+              contributionCalendar { totalContributions }
+            }
+          }
+        }
+        """
+
+        for year in range(created_at.year, now.year + 1):
+            start = max(created_at, dt.datetime(year, 1, 1, tzinfo=dt.timezone.utc))
+            end = min(now, dt.datetime(year, 12, 31, 23, 59, 59, tzinfo=dt.timezone.utc))
+            if start > end:
+                continue
+            data = graphql(
+                yearly_query,
+                {
+                    "login": username,
+                    "from": start.isoformat().replace("+00:00", "Z"),
+                    "to": end.isoformat().replace("+00:00", "Z"),
+                },
+                token,
+            )
+            total += int(
+                data["user"]["contributionsCollection"]["contributionCalendar"]["totalContributions"]
+            )
+
+        return total if total > 0 else sum(recent_days.values())
+    except Exception as exc:
+        print(f"Warning: all-time contribution lookup failed: {exc}")
+        return sum(recent_days.values())
 
 
 def month_day(date: dt.date) -> str:
     return f"{date.strftime('%b')} {date.day}"
 
 
-def full_date(date: dt.date) -> str:
-    return f"{date.strftime('%b')} {date.day}, {date.year}"
-
-
-def summarize(days: dict[dt.date, int], repo_count: int):
+def summarize(days: dict[dt.date, int], repo_count: int, total_contributions: int):
     today = dt.datetime.now(LOCAL_TZ).date()
     ordered_dates = sorted(date for date in days if date <= today)
     if not ordered_dates:
         raise RuntimeError("Contribution calendar has no dates up to today")
 
-    first_date = ordered_dates[0]
-    total_contributions = sum(days[date] for date in ordered_dates)
     active_dates = [date for date in ordered_dates if days[date] > 0]
     latest_activity = active_dates[-1] if active_dates else None
 
@@ -241,24 +260,20 @@ def summarize(days: dict[dt.date, int], repo_count: int):
             streak_start = cursor
             cursor -= dt.timedelta(days=1)
 
-    last_activity_text = (
-        f"Last activity · {month_day(latest_activity)}"
-        if latest_activity
-        else "Last activity · unavailable"
-    )
-    streak_range = (
-        f"{month_day(streak_start)} - {month_day(anchor)}"
-        if current_streak and streak_start and anchor
-        else "No active streak"
-    )
-
     return {
         "total": total_contributions,
         "repositories": repo_count,
-        "last_activity": last_activity_text,
+        "last_activity": (
+            f"Last activity · {month_day(latest_activity)}"
+            if latest_activity
+            else "Last activity · unavailable"
+        ),
         "current_streak": current_streak,
-        "streak_range": streak_range,
-        "total_range": f"{full_date(first_date)} - Present",
+        "streak_range": (
+            f"{month_day(streak_start)} - {month_day(anchor)}"
+            if current_streak and streak_start and anchor
+            else "No active streak"
+        ),
     }
 
 
@@ -269,7 +284,6 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
     last_activity = html.escape(str(stats["last_activity"]))
     current_streak = stats["current_streak"]
     streak_range = html.escape(str(stats["streak_range"]))
-    total_range = html.escape(str(stats["total_range"]))
 
     fire_path = (
         "M 1.5 0.67 C 1.5 0.67 2.24 3.32 2.24 5.47 "
@@ -283,7 +297,7 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" width="{WIDTH}" height="{HEIGHT}" role="img" aria-labelledby="title desc">
   <title id="title">{title}</title>
-  <desc id="desc">Total contributions, repository count, latest activity and current streak.</desc>
+  <desc id="desc">All-time contributions, repository count, latest activity and current streak.</desc>
   <defs>
     <clipPath id="outer"><rect width="{WIDTH}" height="{HEIGHT}" rx="8"/></clipPath>
     <mask id="ring-mask">
@@ -298,7 +312,6 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
 
     <text x="{LEFT_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{total:,}</text>
     <text x="{LEFT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="14">Total Contributions</text>
-    <text x="{LEFT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{total_range}</text>
 
     <text x="{CENTER_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{repositories}</text>
     <text x="{CENTER_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Repositories</text>
@@ -316,8 +329,9 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
 
 def main() -> None:
     username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
-    days = fetch_contribution_days(username)
-    stats = summarize(days, repository_count(username))
+    days, graphql_repo_count = fetch_recent_days(username)
+    total = fetch_all_time_total(username, days)
+    stats = summarize(days, repository_count(graphql_repo_count), total)
     CARD_PATH.parent.mkdir(parents=True, exist_ok=True)
     CARD_PATH.write_text(render_svg(username, stats), encoding="utf-8")
     print(f"Updated {CARD_PATH}")

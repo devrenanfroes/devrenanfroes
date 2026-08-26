@@ -174,9 +174,14 @@ def fetch_recent_days(username: str) -> tuple[dict[dt.date, int], int]:
 
 
 def repository_count(graphql_count: int) -> int:
-    if graphql_count > 0:
+    configured = int(
+        os.getenv("PROFILE_REPOSITORY_COUNT", str(DEFAULT_REPOSITORY_COUNT)).strip()
+    )
+    # GITHUB_TOKEN is repository-scoped and can undercount repositories.
+    # Only trust the GraphQL count when a broader PROFILE_TOKEN is configured.
+    if os.getenv("PROFILE_TOKEN", "").strip() and graphql_count > 0:
         return graphql_count
-    return int(os.getenv("PROFILE_REPOSITORY_COUNT", str(DEFAULT_REPOSITORY_COUNT)).strip())
+    return configured
 
 
 def fetch_all_time_total(username: str, recent_days: dict[dt.date, int]) -> int:
@@ -297,7 +302,7 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" width="{WIDTH}" height="{HEIGHT}" role="img" aria-labelledby="title desc">
   <title id="title">{title}</title>
-  <desc id="desc">All-time contributions, repository count, latest activity and current streak.</desc>
+  <desc id="desc">Contribution total, repository count, latest activity and current streak.</desc>
   <defs>
     <clipPath id="outer"><rect width="{WIDTH}" height="{HEIGHT}" rx="8"/></clipPath>
     <mask id="ring-mask">

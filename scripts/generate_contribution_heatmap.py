@@ -4,7 +4,7 @@ import datetime as dt
 import sys
 from pathlib import Path
 
-from customize_streak_card import LOCAL_TZ, fetch_contribution_days
+from customize_streak_card import LOCAL_TZ, fetch_recent_days
 
 OUTPUT = Path("profile/contributions.svg")
 WIDTH = 760
@@ -105,7 +105,7 @@ def main():
 
     username = os.getenv("GITHUB_REPOSITORY_OWNER", "devrenanfroes").strip()
     try:
-        days = fetch_contribution_days(username)
+        days = fetch_recent_days(username)[0]
         weeks = build_weeks(days)
         OUTPUT.parent.mkdir(parents=True, exist_ok=True)
         OUTPUT.write_text(render_svg(username, weeks), encoding="utf-8")

@@ -30,7 +30,7 @@ Full Stack applications, internal systems, automations and AI integrations.
 <br><br>
 
 <img
-  src="./profile/streak.svg?v=20260826-174246"
+  src="./profile/streak.svg?v=20260826-174500-r2"
   width="100%"
   alt="GitHub contribution activity"
 />
@@ -42,7 +42,7 @@ Full Stack applications, internal systems, automations and AI integrations.
 <br><br>
 
 <img
-  src="./profile/contributions.svg?v=20260826-174246"
+  src="./profile/contributions.svg?v=20260826-174500-r2"
   width="100%"
   alt="GitHub contribution heatmap"
 />
@@ -350,3 +350,5 @@ SENAI · SC Tech
 <br><br>
 
 </div>
+
+<!-- profile-render-refresh: 20260826-174500-r2 -->

@@ -131,7 +131,9 @@ def fetch_days_from_github_html(username: str) -> dict[dt.date, int]:
             count = int(count_match.group(1))
         else:
             level_match = re.search(r"\bdata-level=['\"](\d+)['\"]", tag, re.IGNORECASE)
-            count = 1 if level_match and int(level_match.group(1)) > 0 else 0
+            if level_match and int(level_match.group(1)) > 0:
+                raise RuntimeError("HTML calendar lacks exact contribution counts")
+            count = 0
         days[date] = count
 
     if not days:
@@ -249,21 +251,10 @@ def summarize(days: dict[dt.date, int], repo_count: int, total_contributions: in
     active_dates = [date for date in ordered_dates if days[date] > 0]
     latest_activity = active_dates[-1] if active_dates else None
 
-    if days.get(today, 0) > 0:
-        anchor = today
-    elif days.get(today - dt.timedelta(days=1), 0) > 0:
-        anchor = today - dt.timedelta(days=1)
-    else:
-        anchor = None
-
-    current_streak = 0
-    streak_start = None
-    if anchor is not None:
-        cursor = anchor
-        while days.get(cursor, 0) > 0:
-            current_streak += 1
-            streak_start = cursor
-            cursor -= dt.timedelta(days=1)
+    window_start = today - dt.timedelta(days=29)
+    recent_contributions = sum(
+        count for date, count in days.items() if window_start <= date <= today
+    )
 
     return {
         "total": total_contributions,
@@ -273,12 +264,7 @@ def summarize(days: dict[dt.date, int], repo_count: int, total_contributions: in
             if latest_activity
             else "Last activity · unavailable"
         ),
-        "current_streak": current_streak,
-        "streak_range": (
-            f"{month_day(streak_start)} - {month_day(anchor)}"
-            if current_streak and streak_start and anchor
-            else "No active streak"
-        ),
+        "recent_contributions": recent_contributions,
     }
 
 
@@ -287,28 +273,13 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
     total = stats["total"]
     repositories = stats["repositories"]
     last_activity = html.escape(str(stats["last_activity"]))
-    current_streak = stats["current_streak"]
-    streak_range = html.escape(str(stats["streak_range"]))
-
-    fire_path = (
-        "M 1.5 0.67 C 1.5 0.67 2.24 3.32 2.24 5.47 "
-        "C 2.24 7.53 0.89 9.2 -1.17 9.2 C -3.23 9.2 -4.79 7.53 -4.79 5.47 "
-        "L -4.76 5.11 C -6.78 7.51 -8 10.62 -8 13.99 C -8 18.41 -4.42 22 0 22 "
-        "C 4.42 22 8 18.41 8 13.99 C 8 8.6 5.41 3.79 1.5 0.67 Z "
-        "M -0.29 19 C -2.07 19 -3.51 17.6 -3.51 15.86 C -3.51 14.24 -2.46 13.1 -0.7 12.74 "
-        "C 1.07 12.38 2.9 11.53 3.92 10.16 C 4.31 11.45 4.51 12.81 4.51 14.2 "
-        "C 4.51 16.85 2.36 19 -0.29 19 Z"
-    )
+    recent_contributions = stats["recent_contributions"]
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {HEIGHT}" width="{WIDTH}" height="{HEIGHT}" role="img" aria-labelledby="title desc">
   <title id="title">{title}</title>
-  <desc id="desc">Contribution total, repository count, latest activity and current streak.</desc>
+  <desc id="desc">Contribution total, repository count, latest activity and contributions in the last 30 days.</desc>
   <defs>
     <clipPath id="outer"><rect width="{WIDTH}" height="{HEIGHT}" rx="8"/></clipPath>
-    <mask id="ring-mask">
-      <rect width="{WIDTH}" height="{HEIGHT}" fill="white"/>
-      <ellipse cx="{RIGHT_X}" cy="32" rx="11" ry="15" fill="black"/>
-    </mask>
   </defs>
   <g clip-path="url(#outer)">
     <rect x="0.5" y="0.5" width="759" height="189" rx="8" fill="{BACKGROUND}" stroke="{BORDER}"/>
@@ -322,11 +293,9 @@ def render_svg(username: str, stats: dict[str, object]) -> str:
     <text x="{CENTER_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Repositories</text>
     <text x="{CENTER_X}" y="157.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{last_activity}</text>
 
-    <circle cx="{RIGHT_X}" cy="68.5" r="34" fill="none" stroke="{PRIMARY}" stroke-width="4" mask="url(#ring-mask)"/>
-    <g transform="translate({RIGHT_X}, 19)"><path d="{fire_path}" fill="{SECONDARY}"/></g>
-    <text x="{RIGHT_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{current_streak}</text>
-    <text x="{RIGHT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Current Streak</text>
-    <text x="{RIGHT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">{streak_range}</text>
+    <text x="{RIGHT_X}" y="77.5" text-anchor="middle" fill="{PRIMARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="28">{recent_contributions:,}</text>
+    <text x="{RIGHT_X}" y="127.5" text-anchor="middle" fill="{SECONDARY}" font-family="Segoe UI, Ubuntu, sans-serif" font-weight="700" font-size="14">Recent Contributions</text>
+    <text x="{RIGHT_X}" y="157.5" text-anchor="middle" fill="{MUTED}" font-family="Segoe UI, Ubuntu, sans-serif" font-size="12">Last 30 days</text>
   </g>
 </svg>
 '''

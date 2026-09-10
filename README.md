@@ -30,7 +30,7 @@ Full Stack applications, internal systems, automations and AI integrations.
 <br><br>
 
 <img
-  src="./profile/streak.svg?v=20260910-142440"
+  src="./profile/streak.svg?v=20260910-213634"
   width="100%"
   alt="GitHub contribution activity"
 />
@@ -42,7 +42,7 @@ Full Stack applications, internal systems, automations and AI integrations.
 <br><br>
 
 <img
-  src="./profile/contributions.svg?v=20260910-142440"
+  src="./profile/contributions.svg?v=20260910-213634"
   width="100%"
   alt="GitHub contribution heatmap"
 />

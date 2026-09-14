@@ -67,7 +67,6 @@ def fetch_recent_from_graphql(username: str, token: str) -> tuple[dict[dt.date, 
     query = """
     query($login: String!, $from: DateTime!, $to: DateTime!) {
       user(login: $login) {
-        repositories(ownerAffiliations: [OWNER], first: 1) { totalCount }
         contributionsCollection(from: $from, to: $to) {
           contributionCalendar {
             weeks {
@@ -75,6 +74,10 @@ def fetch_recent_from_graphql(username: str, token: str) -> tuple[dict[dt.date, 
             }
           }
         }
+      }
+      viewer {
+        login
+        repositories(ownerAffiliations: [OWNER], first: 1) { totalCount }
       }
     }
     """
@@ -90,6 +93,9 @@ def fetch_recent_from_graphql(username: str, token: str) -> tuple[dict[dt.date, 
     user = data.get("user")
     if not user:
         raise RuntimeError("GitHub GraphQL returned no user")
+    viewer = data.get("viewer")
+    if not viewer or viewer.get("login", "").casefold() != username.casefold():
+        raise RuntimeError("PROFILE_TOKEN must belong to the profile owner")
 
     days: dict[dt.date, int] = {}
     calendar = user["contributionsCollection"]["contributionCalendar"]
@@ -99,7 +105,7 @@ def fetch_recent_from_graphql(username: str, token: str) -> tuple[dict[dt.date, 
     if not days:
         raise RuntimeError("GitHub GraphQL returned no contribution days")
 
-    return days, int(user.get("repositories", {}).get("totalCount", 0))
+    return days, int(viewer.get("repositories", {}).get("totalCount", 0))
 
 
 def fetch_url(url: str, accept: str) -> bytes:

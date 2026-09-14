@@ -30,7 +30,7 @@ Full Stack applications, internal systems, automations and AI integrations.
 <br><br>
 
 <img
-  src="./profile/streak.svg?v=20260914-repository-fix"
+  src="./profile/streak.svg?v=20260914-repository-split"
   width="100%"
   alt="GitHub contribution activity"
 />

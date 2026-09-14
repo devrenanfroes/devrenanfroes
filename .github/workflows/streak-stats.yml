@@ -1,0 +1,78 @@
+name: Update contribution stats
+
+on:
+  schedule:
+    # Run hourly away from the top of the hour to reduce GitHub scheduler delays.
+    - cron: "17 * * * *"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "README.md"
+      - "profile/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout profile repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate contribution card
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PROFILE_TOKEN: ${{ secrets.PROFILE_PAT }}
+        run: python3 scripts/customize_streak_card.py
+
+      - name: Generate contribution heatmap
+        env:
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PROFILE_TOKEN: ${{ secrets.PROFILE_PAT }}
+        run: python3 scripts/generate_contribution_heatmap.py
+
+      - name: Refresh README image cache
+        run: |
+          if git diff --quiet -- profile/streak.svg profile/contributions.svg; then
+            exit 0
+          fi
+
+          python3 - <<'PY'
+          import datetime as dt
+          import re
+          from pathlib import Path
+
+          path = Path("README.md")
+          text = path.read_text(encoding="utf-8")
+          stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%d-%H%M%S")
+          text = re.sub(
+              r"(\./profile/streak\.svg)(?:\?v=[^\"]*)?",
+              rf"\1?v={stamp}",
+              text,
+          )
+          text = re.sub(
+              r"(\./profile/contributions\.svg)(?:\?v=[^\"]*)?",
+              rf"\1?v={stamp}",
+              text,
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Commit refreshed profile stats
+        run: |
+          if git diff --quiet -- README.md profile/streak.svg profile/contributions.svg; then
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- README.md profile/streak.svg profile/contributions.svg
+          git commit -m "chore: refresh profile stats"
+          git push

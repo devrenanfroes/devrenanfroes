@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 710" width="720" height="710" role="img" aria-labelledby="title desc">
+<title id="title">Renan Fróes — Developer and Founder</title>
+<desc id="desc">Monochrome Fróes Labs profile banner with Renan Fróes, software developer and founder.</desc>
+<defs><clipPath id="clip"><rect x="9" y="9" width="702" height="692" rx="21"/></clipPath></defs>
+<rect width="720" height="710" fill="#F8F9FB"/>
+<g clip-path="url(#clip)"><circle cx="610" cy="472" r="88" fill="none" stroke="#ACB3BD" stroke-width="1.5" opacity="0.5" stroke-dasharray="246 308" transform="rotate(-66 610 472)"/><circle cx="610" cy="472" r="146" fill="none" stroke="#ACB3BD" stroke-width="1.5" opacity="0.44" stroke-dasharray="409 511" transform="rotate(-58 610 472)"/><circle cx="610" cy="472" r="207" fill="none" stroke="#ACB3BD" stroke-width="1.5" opacity="0.38" stroke-dasharray="580 725" transform="rotate(-50 610 472)"/><circle cx="610" cy="472" r="267" fill="none" stroke="#ACB3BD" stroke-width="1.5" opacity="0.32" stroke-dasharray="748 935" transform="rotate(-42 610 472)"/><circle cx="470" cy="402" r="3.5" fill="#555D6A"/><circle cx="525" cy="315" r="3.5" fill="#555D6A"/><circle cx="671" cy="319" r="3.5" fill="#555D6A"/><circle cx="715" cy="450" r="3.5" fill="#555D6A"/><circle cx="527" cy="662" r="3.5" fill="#555D6A"/><circle cx="653" cy="638" r="3.5" fill="#555D6A"/></g>
+<rect x="9" y="9" width="702" height="692" rx="21" fill="none" stroke="#C3C8D0" stroke-width="1.4" opacity=".9"/>
+<g font-family="Arial, Helvetica, sans-serif">
+<text x="60" y="78" fill="#555D6A" font-size="18" font-weight="500" letter-spacing="4.5">DEVELOPER  /  FOUNDER</text>
+<path d="M60 110 H660" stroke="#C3C8D0" stroke-width="1" opacity=".7"/>
+<text x="59" y="267" fill="#17191E" font-size="99" font-weight="700" letter-spacing="-2">RENAN</text>
+<text x="59" y="372" fill="#17191E" font-size="99" font-weight="700" letter-spacing="-2">FRÓES</text>
+<text x="61" y="443" fill="#555D6A" font-size="19" font-weight="600" letter-spacing="3.5">SOFTWARE DEVELOPER</text>
+<text x="61" y="515" fill="#17191E" font-size="26" font-weight="400">I build software that solves</text>
+<text x="61" y="548" fill="#17191E" font-size="26" font-weight="400">real operational problems.</text>
+<path d="M60 605 H660" stroke="#C3C8D0" stroke-width="1" opacity=".7"/>
+<text x="61" y="647" fill="#17191E" font-size="20" font-weight="600" letter-spacing="4">FRÓES LABS</text>
+<text x="61" y="678" fill="#555D6A" font-size="14" letter-spacing="2.5">SOFTWARE · AUTOMATION · AI</text>
+</g>
+</svg>

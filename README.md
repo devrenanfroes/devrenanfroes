@@ -18,7 +18,7 @@
 
 <br>
 
-### 01 / CONTRIBUTION ACTIVITY
+<p><strong>01 / CONTRIBUTION ACTIVITY</strong></p>
 
 <div align="center">
 
@@ -38,7 +38,7 @@
 
 ---
 
-### 02 / ABOUT
+<p><strong>02 / ABOUT</strong></p>
 
 I'm **Renan Fróes**, a Software Developer and Founder of **Fróes Labs**.
 
@@ -50,13 +50,13 @@ I design and build complete software solutions — from the interface to backend
 
 ---
 
-### 03 / TECHNOLOGIES
+<p><strong>03 / TECHNOLOGIES</strong></p>
 
 <div align="center">
 
 <br>
 
-### MAIN STACK
+<p><strong>MAIN STACK</strong></p>
 
 <br>
 
@@ -76,7 +76,7 @@ I design and build complete software solutions — from the interface to backend
 
 <br><br>
 
-### FRONTEND & MOBILE
+<p><strong>FRONTEND & MOBILE</strong></p>
 
 <br>
 
@@ -98,7 +98,7 @@ I design and build complete software solutions — from the interface to backend
 
 <br><br>
 
-### BACKEND & DATA
+<p><strong>BACKEND & DATA</strong></p>
 
 <br>
 
@@ -120,7 +120,7 @@ I design and build complete software solutions — from the interface to backend
 
 <br><br>
 
-### AUTOMATION & AI
+<p><strong>AUTOMATION & AI</strong></p>
 
 <br>
 
@@ -140,7 +140,7 @@ I design and build complete software solutions — from the interface to backend
 
 <br><br>
 
-### TOOLS & INFRASTRUCTURE
+<p><strong>TOOLS & INFRASTRUCTURE</strong></p>
 
 <br>
 
@@ -166,9 +166,9 @@ I design and build complete software solutions — from the interface to backend
 
 ---
 
-### 04 / SELECTED WORK
+<p><strong>04 / SELECTED WORK</strong></p>
 
-#### School Cafeteria Management System
+<p><strong>School Cafeteria Management System</strong></p>
 
 A **production system used daily** for operational and financial management in a school cafeteria. Includes sales, customer balances, billing, reports, WhatsApp communication and OCR-assisted processing of handwritten records.
 
@@ -176,7 +176,7 @@ A **production system used daily** for operational and financial management in a
 
 <br>
 
-#### Fróes Labs Command Center
+<p><strong>Fróes Labs Command Center</strong></p>
 
 An internal operations dashboard unifying application health, Linux server monitoring, commercial email, WhatsApp operations and Telegram alerts. Built for reliable operational visibility.
 
@@ -184,7 +184,7 @@ An internal operations dashboard unifying application health, Linux server monit
 
 <br>
 
-#### Energy Management
+<p><strong>Energy Management</strong></p>
 
 A system for tracking electricity usage across independent meters, with monthly readings, consumption history, authentication and administrative reports.
 
@@ -192,7 +192,7 @@ A system for tracking electricity usage across independent meters, with monthly 
 
 <br>
 
-#### Developer Portfolio
+<p><strong>Developer Portfolio</strong></p>
 
 My personal portfolio showcasing projects and software development work, built with Angular and TypeScript.
 
@@ -202,7 +202,7 @@ My personal portfolio showcasing projects and software development work, built w
 
 ---
 
-### 05 / FRÓES LABS
+<p><strong>05 / FRÓES LABS</strong></p>
 
 **Software · Automation · Artificial Intelligence**
 
@@ -214,7 +214,7 @@ At **Fróes Labs**, I build tailored software, digital products and workflow aut
 
 ---
 
-### 06 / EDUCATION
+<p><strong>06 / EDUCATION</strong></p>
 
 **Software Engineering** · Bachelor's Degree — UniCesumar  
 **Mobile Development** · React Native Technical Program — SENAI / SC Tech
@@ -223,7 +223,7 @@ At **Fróes Labs**, I build tailored software, digital products and workflow aut
 
 ---
 
-### 07 / CONNECT
+<p><strong>07 / CONNECT</strong></p>
 
 [**Fróes Labs**](https://froeslabs.com/) &nbsp; · &nbsp; [**LinkedIn**](https://www.linkedin.com/in/devrenanfroes) &nbsp; · &nbsp; [**Portfolio**](https://devrenanfroes.vercel.app/) &nbsp; · &nbsp; [**Email**](mailto:contato@froeslabs.com)
 

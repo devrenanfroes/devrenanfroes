@@ -1,11 +1,11 @@
 <div align="center">
 
 <picture>
-  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="./assets/hero-dark-mobile.svg">
-  <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="./assets/hero-light-mobile.svg">
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/hero-dark-desktop.svg">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/hero-light-desktop.svg">
-  <img width="100%" alt="Renan Fróes — Software Developer & Founder of Fróes Labs" src="./assets/hero-light-desktop.svg">
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="./assets/hero-dark-mobile.svg?v=20261011-1023">
+  <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="./assets/hero-light-mobile.svg?v=20261011-1023">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/hero-dark-desktop.svg?v=20261011-1023">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/hero-light-desktop.svg?v=20261011-1023">
+  <img width="100%" alt="Renan Fróes — Software Engineer & Founder of Fróes Labs" src="./assets/hero-light-desktop.svg?v=20261011-1023">
 </picture>
 
 <br>

@@ -1,18 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 480" width="1440" height="480" role="img" aria-labelledby="title desc">
-<title id="title">Renan Fróes — Developer and Founder</title>
-<desc id="desc">Monochrome Fróes Labs profile banner with Renan Fróes, software developer and founder.</desc>
-<defs><clipPath id="clip"><rect x="9" y="9" width="1422" height="462" rx="21"/></clipPath></defs>
-<rect width="1440" height="480" fill="#090A0C"/>
-<g clip-path="url(#clip)"><circle cx="1170" cy="248" r="88" fill="none" stroke="#5D6471" stroke-width="1.5" opacity="0.5" stroke-dasharray="246 308" transform="rotate(-66 1170 248)"/><circle cx="1170" cy="248" r="146" fill="none" stroke="#5D6471" stroke-width="1.5" opacity="0.44" stroke-dasharray="409 511" transform="rotate(-58 1170 248)"/><circle cx="1170" cy="248" r="207" fill="none" stroke="#5D6471" stroke-width="1.5" opacity="0.38" stroke-dasharray="580 725" transform="rotate(-50 1170 248)"/><circle cx="1170" cy="248" r="267" fill="none" stroke="#5D6471" stroke-width="1.5" opacity="0.32" stroke-dasharray="748 935" transform="rotate(-42 1170 248)"/><circle cx="1030" cy="178" r="3.5" fill="#B5BAC5"/><circle cx="1085" cy="91" r="3.5" fill="#B5BAC5"/><circle cx="1231" cy="95" r="3.5" fill="#B5BAC5"/><circle cx="1275" cy="226" r="3.5" fill="#B5BAC5"/><circle cx="1087" cy="438" r="3.5" fill="#B5BAC5"/><circle cx="1213" cy="414" r="3.5" fill="#B5BAC5"/></g>
-<rect x="9" y="9" width="1422" height="462" rx="21" fill="none" stroke="#414650" stroke-width="1.4" opacity=".9"/>
-<g font-family="Arial, Helvetica, sans-serif">
-<text x="74" y="69" fill="#B5BAC5" font-size="18" font-weight="500" letter-spacing="4.5">DEVELOPER  /  FOUNDER</text>
-<path d="M74 106 H1366" stroke="#414650" stroke-width="1" opacity=".65"/>
-<text x="74" y="257" fill="#F5F6F8" font-size="106" font-weight="700" letter-spacing="-3">RENAN FRÓES</text>
-<text x="77" y="305" fill="#B5BAC5" font-size="21" font-weight="600" letter-spacing="4">SOFTWARE DEVELOPER  /  FOUNDER</text>
-<text x="77" y="366" fill="#F5F6F8" font-size="24" font-weight="400">I build software that solves real operational problems.</text>
-<path d="M74 430 H1366" stroke="#414650" stroke-width="1" opacity=".65"/>
-<text x="75" y="458" fill="#F5F6F8" font-size="19" font-weight="600" letter-spacing="3.5">FRÓES LABS</text>
-<text x="1122" y="458" fill="#B5BAC5" font-size="14" letter-spacing="2">SOFTWARE · AUTOMATION · AI</text>
-</g>
+  <title id="title">Renan Fróes — Software Engineer and Founder</title>
+  <desc id="desc">Horizontal Fróes Labs profile cover in black, graphite and off-white.</desc>
+  <defs>
+    <clipPath id="frame"><rect x="12" y="12" width="1416" height="456" rx="18"/></clipPath>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0D0F12"/><stop offset="1" stop-color="#07080A"/></linearGradient>
+  </defs>
+  <rect width="1440" height="480" fill="url(#shade)"/>
+  <g clip-path="url(#frame)" fill="none" stroke="#59606B">
+    <circle cx="1240" cy="242" r="110" opacity=".34"/>
+    <circle cx="1240" cy="242" r="184" opacity=".26"/>
+    <circle cx="1240" cy="242" r="258" opacity=".18"/>
+    <path d="M994 70 1392 468M1060 12l368 368" opacity=".12"/>
+  </g>
+  <rect x="12" y="12" width="1416" height="456" rx="18" fill="none" stroke="#3D424B"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="76" y="78" fill="#AEB4BE" font-size="17" font-weight="600" letter-spacing="4.2">SOFTWARE ENGINEER  /  FOUNDER</text>
+    <path d="M76 108H1364" stroke="#3D424B"/>
+    <text x="72" y="268" fill="#F2F3F5" font-size="88" font-weight="700" letter-spacing="-2.8">RENAN FRÓES</text>
+    <text x="77" y="330" fill="#AEB4BE" font-size="20" letter-spacing="3">SOFTWARE · AUTOMATION · INTELLIGENT SYSTEMS</text>
+    <path d="M76 406H1364" stroke="#3D424B"/>
+    <text x="77" y="446" fill="#F2F3F5" font-size="17" font-weight="600" letter-spacing="3.6">FRÓES LABS</text>
+    <text x="1364" y="446" fill="#808791" font-size="13" letter-spacing="2.4" text-anchor="end">BUILDING RELIABLE DIGITAL PRODUCTS</text>
+  </g>
 </svg>

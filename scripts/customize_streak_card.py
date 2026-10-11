@@ -202,15 +202,25 @@ def fetch_recent_days(username: str) -> tuple[dict[dt.date, int], int, int | Non
 
 
 def repository_counts(public_count: int, private_count: int | None) -> tuple[int, int]:
-    if private_count is not None:
-        return public_count, private_count
-
+    previous_private_count: int | None = None
     if CARD_PATH.exists():
         existing = CARD_PATH.read_text(encoding="utf-8")
         match = re.search(r">(\d+)</text>\s*<text[^>]*>Private</text>", existing)
         if match:
-            print("Warning: PROFILE_PAT is unavailable; preserving the previous private count")
-            return public_count, int(match.group(1))
+            previous_private_count = int(match.group(1))
+
+    if private_count is not None:
+        if previous_private_count is not None and private_count < previous_private_count:
+            print(
+                "Warning: PROFILE_PAT returned fewer private repositories than the "
+                "last verified count; preserving the verified count"
+            )
+            return public_count, previous_private_count
+        return public_count, private_count
+
+    if previous_private_count is not None:
+        print("Warning: PROFILE_PAT is unavailable; preserving the previous private count")
+        return public_count, previous_private_count
 
     raise RuntimeError(
         "Unable to determine the private repository count. "

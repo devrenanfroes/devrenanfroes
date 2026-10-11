@@ -40,7 +40,7 @@
 
 <p><strong>02 / ABOUT</strong></p>
 
-I'm **Renan Fróes**, a Software Developer and Founder of **Fróes Labs**.
+I'm **Renan Fróes**, a Software Engineer and Founder of **Fróes Labs**.
 
 I design and build complete software solutions — from the interface to backend, databases, infrastructure and integrations. My focus is turning real operational problems into reliable digital products.
 
@@ -231,7 +231,7 @@ At **Fróes Labs**, I build tailored software, digital products and workflow aut
 
 <div align="center">
 
-<sub>RENAN FRÓES · SOFTWARE DEVELOPER & FOUNDER</sub>
+<sub>RENAN FRÓES · SOFTWARE ENGINEER & FOUNDER</sub>
 
 </div>
 

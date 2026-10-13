@@ -22,7 +22,7 @@
 
 <div align="center">
 
-<img src="./profile/streak.svg?v=20261013-092258" width="100%" alt="GitHub contribution activity: contributions, repositories and recent activity" />
+<img src="./profile/streak.svg?v=20261013-173504" width="100%" alt="GitHub contribution activity: contributions, repositories and recent activity" />
 
 <br>
 
@@ -30,7 +30,7 @@
 
 <br><br>
 
-<img src="./profile/contributions.svg?v=20261013-092258" width="100%" alt="GitHub contribution heatmap for the last twelve months" />
+<img src="./profile/contributions.svg?v=20261013-173504" width="100%" alt="GitHub contribution heatmap for the last twelve months" />
 
 </div>
 

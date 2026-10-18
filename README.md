@@ -61,18 +61,18 @@ I design and build complete software solutions — from the interface to backend
 <br>
 
 <p>
-  <img height="40" src="https://cdn.simpleicons.org/javascript/F5F5F5" alt="JavaScript" title="JavaScript" />
+  <img height="54" src="https://cdn.simpleicons.org/javascript/F5F5F5" alt="JavaScript" title="JavaScript" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/typescript/F5F5F5" alt="TypeScript" title="TypeScript" />
+  <img height="54" src="https://cdn.simpleicons.org/typescript/F5F5F5" alt="TypeScript" title="TypeScript" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/react/F5F5F5" alt="React" title="React" />
+  <img height="54" src="https://cdn.simpleicons.org/react/F5F5F5" alt="React" title="React" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/nodedotjs/F5F5F5" alt="Node.js" title="Node.js" />
+  <img height="54" src="https://cdn.simpleicons.org/nodedotjs/F5F5F5" alt="Node.js" title="Node.js" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/postgresql/F5F5F5" alt="PostgreSQL" title="PostgreSQL" />
+  <img height="54" src="https://cdn.simpleicons.org/postgresql/F5F5F5" alt="PostgreSQL" title="PostgreSQL" />
 </p>
 
-<sub>JavaScript  ·  TypeScript  ·  React  ·  Node.js  ·  PostgreSQL</sub>
+<small>JavaScript  ·  TypeScript  ·  React  ·  Node.js  ·  PostgreSQL</small>
 
 <br><br>
 
@@ -81,20 +81,20 @@ I design and build complete software solutions — from the interface to backend
 <br>
 
 <p>
-  <img height="40" src="https://cdn.simpleicons.org/react/F5F5F5" alt="React Native" title="React Native" />
+  <img height="54" src="https://cdn.simpleicons.org/react/F5F5F5" alt="React Native" title="React Native" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/nextdotjs/F5F5F5" alt="Next.js" title="Next.js" />
+  <img height="54" src="https://cdn.simpleicons.org/nextdotjs/F5F5F5" alt="Next.js" title="Next.js" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/angular/F5F5F5" alt="Angular" title="Angular" />
+  <img height="54" src="https://cdn.simpleicons.org/angular/F5F5F5" alt="Angular" title="Angular" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/tailwindcss/F5F5F5" alt="Tailwind CSS" title="Tailwind CSS" />
+  <img height="54" src="https://cdn.simpleicons.org/tailwindcss/F5F5F5" alt="Tailwind CSS" title="Tailwind CSS" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/html5/F5F5F5" alt="HTML" title="HTML" />
+  <img height="54" src="https://cdn.simpleicons.org/html5/F5F5F5" alt="HTML" title="HTML" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/css/F5F5F5" alt="CSS" title="CSS" />
+  <img height="54" src="https://cdn.simpleicons.org/css/F5F5F5" alt="CSS" title="CSS" />
 </p>
 
-<sub>React Native  ·  Next.js  ·  Angular  ·  Tailwind CSS  ·  HTML  ·  CSS</sub>
+<small>React Native  ·  Next.js  ·  Angular  ·  Tailwind CSS  ·  HTML  ·  CSS</small>
 
 <br><br>
 
@@ -103,16 +103,16 @@ I design and build complete software solutions — from the interface to backend
 <br>
 
 <p>
-  <img height="40" src="https://cdn.simpleicons.org/nodedotjs/F5F5F5" alt="Node.js" title="Node.js" />
+  <img height="54" src="https://cdn.simpleicons.org/nodedotjs/F5F5F5" alt="Node.js" title="Node.js" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/express/F5F5F5" alt="Express" title="Express" />
+  <img height="54" src="https://cdn.simpleicons.org/express/F5F5F5" alt="Express" title="Express" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/postgresql/F5F5F5" alt="PostgreSQL" title="PostgreSQL" />
+  <img height="54" src="https://cdn.simpleicons.org/postgresql/F5F5F5" alt="PostgreSQL" title="PostgreSQL" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/neon/F5F5F5" alt="Neon" title="Neon" />
+  <img height="54" src="https://cdn.simpleicons.org/neon/F5F5F5" alt="Neon" title="Neon" />
 </p>
 
-<sub>Node.js  ·  Express  ·  PostgreSQL  ·  Neon</sub>
+<small>Node.js  ·  Express  ·  PostgreSQL  ·  Neon</small>
 
 <br>
 
@@ -125,14 +125,14 @@ I design and build complete software solutions — from the interface to backend
 <br>
 
 <p>
-  <img height="40" src="https://cdn.simpleicons.org/googlegemini/F5F5F5" alt="Gemini" title="Gemini" />
+  <img height="54" src="https://cdn.simpleicons.org/googlegemini/F5F5F5" alt="Gemini" title="Gemini" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/openrouter/F5F5F5" alt="OpenRouter" title="OpenRouter" />
+  <img height="54" src="https://cdn.simpleicons.org/openrouter/F5F5F5" alt="OpenRouter" title="OpenRouter" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/whatsapp/F5F5F5" alt="WhatsApp" title="WhatsApp" />
+  <img height="54" src="https://cdn.simpleicons.org/whatsapp/F5F5F5" alt="WhatsApp" title="WhatsApp" />
 </p>
 
-<sub>Gemini  ·  OpenRouter  ·  WhatsApp</sub>
+<small>Gemini  ·  OpenRouter  ·  WhatsApp</small>
 
 <br>
 
@@ -145,18 +145,18 @@ I design and build complete software solutions — from the interface to backend
 <br>
 
 <p>
-  <img height="40" src="https://cdn.simpleicons.org/git/F5F5F5" alt="Git" title="Git" />
+  <img height="54" src="https://cdn.simpleicons.org/git/F5F5F5" alt="Git" title="Git" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/github/F5F5F5" alt="GitHub" title="GitHub" />
+  <img height="54" src="https://cdn.simpleicons.org/github/F5F5F5" alt="GitHub" title="GitHub" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/linux/F5F5F5" alt="Linux" title="Linux" />
+  <img height="54" src="https://cdn.simpleicons.org/linux/F5F5F5" alt="Linux" title="Linux" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/vercel/F5F5F5" alt="Vercel" title="Vercel" />
+  <img height="54" src="https://cdn.simpleicons.org/vercel/F5F5F5" alt="Vercel" title="Vercel" />
   &nbsp;&nbsp;&nbsp;
-  <img height="40" src="https://cdn.simpleicons.org/render/F5F5F5" alt="Render" title="Render" />
+  <img height="54" src="https://cdn.simpleicons.org/render/F5F5F5" alt="Render" title="Render" />
 </p>
 
-<sub>Git  ·  GitHub  ·  Linux  ·  Vercel  ·  Render</sub>
+<small>Git  ·  GitHub  ·  Linux  ·  Vercel  ·  Render</small>
 
 <br><br>
 
